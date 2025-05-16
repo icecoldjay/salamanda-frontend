@@ -1,5 +1,9 @@
 "use client";
 import { createContext, useContext, useState, useEffect } from "react";
+import bnb from "../images/bnb.svg";
+import eth from "../images/eth.svg";
+import sol from "../images/sol.svg";
+import polygon from "../images/polygon.svg";
 
 export const NETWORKS = {
   BSC: {
@@ -11,7 +15,7 @@ export const NETWORKS = {
     rpcUrl: "https://bsc-dataseed.binance.org/",
     blockExplorer: "https://bscscan.com",
     type: "evm",
-    icon: "/networks/bsc.svg",
+    icon: bnb,
   },
   ETHEREUM: {
     id: "ethereum",
@@ -22,7 +26,7 @@ export const NETWORKS = {
     rpcUrl: "https://mainnet.infura.io/v3/YOUR_INFURA_ID",
     blockExplorer: "https://etherscan.io",
     type: "evm",
-    icon: "/networks/ethereum.svg",
+    icon: eth,
   },
   POLYGON: {
     id: "polygon",
@@ -33,7 +37,7 @@ export const NETWORKS = {
     rpcUrl: "https://polygon-rpc.com",
     blockExplorer: "https://polygonscan.com",
     type: "evm",
-    icon: "/networks/polygon.svg",
+    icon: polygon,
   },
   ARBITRUM: {
     id: "arbitrum",
@@ -44,7 +48,7 @@ export const NETWORKS = {
     rpcUrl: "https://arb1.arbitrum.io/rpc",
     blockExplorer: "https://arbiscan.io",
     type: "evm",
-    icon: "/networks/arbitrum.svg",
+    icon: eth,
   },
   BASE: {
     id: "base",
@@ -55,7 +59,7 @@ export const NETWORKS = {
     rpcUrl: "https://mainnet.base.org",
     blockExplorer: "https://basescan.org",
     type: "evm",
-    icon: "/networks/base.svg",
+    icon: eth,
   },
   AVALANCHE: {
     id: "avalanche",
@@ -66,7 +70,7 @@ export const NETWORKS = {
     rpcUrl: "https://api.avax.network/ext/bc/C/rpc",
     blockExplorer: "https://snowtrace.io",
     type: "evm",
-    icon: "/networks/avalanche.svg",
+    icon: eth,
     nativeCurrency: {
       name: "Avalanche",
       symbol: "AVAX",
@@ -79,7 +83,7 @@ export const NETWORKS = {
     symbol: "SOL",
     type: "solana",
     endpoint: "https://api.mainnet-beta.solana.com",
-    icon: "/networks/solana.svg",
+    icon: sol,
   },
 };
 

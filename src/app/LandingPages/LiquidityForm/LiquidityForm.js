@@ -5,14 +5,15 @@ import { useEvm } from "../../context/evmContext";
 import { useSolana } from "../../context/solanaContext";
 import Image from "next/image";
 import TokenSelectorModal from "../TokenSelectorModal/TokenSelectorModal";
+import coinLogo from "../../images/bnb.png";
 
 // Default token images
-import bnb from "../../images/bnb.png";
-import eth from "../../images/eth.png";
-import sol from "../../images/sol.png";
-import usdc from "../../images/usdc.png";
-import usdt from "../../images/usdt.png";
-import dai from "../../images/dai.png";
+// import bnb from "../../images/bnb.png";
+// import eth from "../../images/eth.png";
+// import sol from "../../images/sol.png";
+// import usdc from "../../images/usdc.png";
+// import usdt from "../../images/usdt.png";
+// import dai from "../../images/dai.png";
 
 export const CHAIN_TYPES = {
   EVM: "evm",
@@ -39,13 +40,13 @@ const DEFAULT_TOKENS = {
     baseToken: {
       name: "Ethereum",
       symbol: "ETH",
-      icon: eth,
+      icon: coinLogo,
       address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
     },
     quoteToken: {
       name: "USD Coin",
       symbol: "USDC",
-      icon: usdc,
+      icon: coinLogo,
       address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     },
   },
@@ -53,13 +54,13 @@ const DEFAULT_TOKENS = {
     baseToken: {
       name: "Solana",
       symbol: "SOL",
-      icon: sol,
+      icon: coinLogo,
       address: "So11111111111111111111111111111111111111112",
     },
     quoteToken: {
       name: "USD Coin",
       symbol: "USDC",
-      icon: usdc,
+      icon: coinLogo,
       address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     },
   },

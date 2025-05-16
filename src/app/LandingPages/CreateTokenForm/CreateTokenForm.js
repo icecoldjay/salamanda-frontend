@@ -172,7 +172,7 @@ const CreateTokenForm = ({ onNext }) => {
               : "bg-gray-800 text-gray-500 cursor-not-allowed"
           }`}
         >
-          Continue to Distribution
+          Continue to Launch
         </button>
 
         <p className="text-sm text-gray-400 text-center mt-4">

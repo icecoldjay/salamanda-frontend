@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import logo from "../../images/logo.png";
+import bnbLogo from "../../images/bnb.svg";
 import Link from "next/link";
 import { IoIosArrowDown } from "react-icons/io";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
@@ -242,7 +243,7 @@ const Header = () => {
     return (
       <>
         <Image
-          src={selectedNetwork.icon || "/networks/default.svg"}
+          src={selectedNetwork.icon || bnbLogo}
           width={24}
           height={24}
           alt={`${selectedNetwork.symbol} logo`}

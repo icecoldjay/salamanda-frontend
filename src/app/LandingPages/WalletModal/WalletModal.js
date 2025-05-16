@@ -4,6 +4,10 @@ import Image from "next/image";
 import { useNetwork } from "../../context/networkContext";
 import { useEvm, EVM_WALLET_DOWNLOADS } from "../../context/evmContext";
 import { useSolana, SOLANA_WALLETS } from "../../context/solanaContext";
+import coinbase from "../../images/coinbase.svg";
+import trustwallet from "../../images/trustwallet.svg";
+import metamask from "../../images/metamask.svg";
+import phantom from "../../images/phantom.svg";
 
 const WalletModal = ({ isOpen, onClose }) => {
   const { isEvm, isSolana, selectedNetwork } = useNetwork();
@@ -63,16 +67,16 @@ const WalletModal = ({ isOpen, onClose }) => {
   };
 
   const evmWallets = [
-    { id: "metaMask", name: "MetaMask", icon: "/wallets/metamask.svg" },
+    { id: "metaMask", name: "MetaMask", icon: metamask },
     {
       id: "trustWallet",
       name: "TrustWallet",
-      icon: "/wallets/trustwallet.svg",
+      icon: trustwallet,
     },
     {
       id: "coinbaseWallet",
       name: "Coinbase Wallet",
-      icon: "/wallets/coinbase.svg",
+      icon: coinbase,
     },
   ];
 
@@ -80,7 +84,7 @@ const WalletModal = ({ isOpen, onClose }) => {
     {
       id: SOLANA_WALLETS.PHANTOM,
       name: "Phantom",
-      icon: "/wallets/phantom.svg",
+      icon: phantom,
     },
     {
       id: SOLANA_WALLETS.BACKPACK,

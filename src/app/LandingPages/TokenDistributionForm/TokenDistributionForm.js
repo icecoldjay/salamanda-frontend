@@ -50,6 +50,7 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
   const [wallets, setWallets] = useState([]);
   const [generatedWallets, setGeneratedWallets] = useState([]);
   const [isValid, setIsValid] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
 
   const { address, isConnected } = useAccount();
   const {
@@ -89,12 +90,13 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
   }, [writeError]);
 
   useEffect(() => {
-    if (distributionData.method === "generate") {
+    // Only generate wallets when method is "generate" and not during typing
+    if (distributionData.method === "generate" && !isTyping) {
       const wallets = generateWallets(distributionData.walletCount);
       setGeneratedWallets(wallets);
       updateDistributionData({ wallets });
     }
-  }, [distributionData.method, distributionData.walletCount]);
+  }, [distributionData.method, distributionData.walletCount, isTyping]);
 
   useEffect(() => {
     if (distributionData.method === "manual") {
@@ -412,7 +414,7 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
         </p>
 
         <div className="mb-6">
-          <div className="flex justify-between mb-1 text-sm font-medium">
+          <div className="flex justify-between mb-1 text-xs text-gray-400">
             <span>Liquidity pool</span>
             <span>Initial holders</span>
           </div>
@@ -420,14 +422,53 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
             <span>{distributionData.liquidityPercentage}%</span>
             <span>{100 - distributionData.liquidityPercentage}%</span>
           </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={distributionData.liquidityPercentage}
-            onChange={handleLiquidityChange}
-            className="w-full accent-red-600"
-          />
+          <div className="relative w-full h-2">
+            <div className="absolute inset-0 w-full h-full bg-[#190101] rounded-lg"></div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={distributionData.liquidityPercentage}
+              onChange={handleLiquidityChange}
+              className="absolute inset-0 w-full h-full appearance-none bg-transparent opacity-100 cursor-pointer z-10"
+            />
+            <style jsx>{`
+              input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: #f03a47;
+                cursor: pointer;
+                border: none;
+                margin-top: -7px;
+              }
+
+              input[type="range"]::-moz-range-thumb {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background: #f03a47;
+                cursor: pointer;
+                border: none;
+              }
+
+              input[type="range"]::-webkit-slider-runnable-track {
+                width: 100%;
+                height: 2px;
+                background: transparent;
+                border-radius: 2px;
+              }
+
+              input[type="range"]::-moz-range-track {
+                width: 100%;
+                height: 2px;
+                background: transparent;
+                border-radius: 2px;
+              }
+            `}</style>
+          </div>
         </div>
 
         <div className="mb-6">
@@ -473,7 +514,31 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
                 min="1"
                 max="10"
                 value={distributionData.walletCount}
-                onChange={handleWalletCountChange}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Set typing flag to prevent wallet generation
+                  setIsTyping(true);
+
+                  // Only update state if the value is valid
+                  if (
+                    value === "" ||
+                    (!isNaN(value) && Number(value) >= 1 && Number(value) <= 10)
+                  ) {
+                    updateDistributionData({ walletCount: value });
+                  }
+                }}
+                onBlur={(e) => {
+                  // Final validation on blur
+                  let value = parseInt(e.target.value);
+                  if (isNaN(value) || value < 1) value = 1;
+                  if (value > 10) value = 10;
+
+                  // Update the value
+                  updateDistributionData({ walletCount: value });
+
+                  // Clear typing flag to allow wallet generation
+                  setIsTyping(false);
+                }}
                 className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-4 py-2 text-sm placeholder-gray-500"
               />
             </div>
@@ -487,9 +552,12 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
                   <span>Your wallet</span>
                   <span>{distributionData.liquidityPercentage}%</span>
                 </li>
-                {wallets.map((wallet, index) => (
+                {generatedWallets.map((wallet, index) => (
                   <li key={index} className="flex justify-between">
-                    <span>{wallet.address}</span>
+                    <span>
+                      {wallet.address.substring(0, 6)}...
+                      {wallet.address.substring(wallet.address.length - 4)}
+                    </span>
                     <span>
                       {Math.floor(
                         (100 - distributionData.liquidityPercentage) /

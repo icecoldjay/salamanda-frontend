@@ -2,7 +2,7 @@
 "use client";
 import { useState } from "react";
 import CreateTokenForm from "../CreateTokenForm/CreateTokenForm";
-import { TokenDistributionForm } from "../TokenDistributionForm/TokenDistributionForm";
+import TokenDistributionForm from "../TokenDistributionForm/TokenDistributionForm";
 import TokenConfirmation from "../TokenConfirmation/TokenConfirmation";
 import { useNetwork } from "../../context/networkContext";
 import { useTokenCreation } from "../../context/tokenCreationContext";
