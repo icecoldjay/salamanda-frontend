@@ -3,68 +3,30 @@ import { useState, useEffect } from "react";
 import { useNetwork } from "../../context/networkContext";
 import { useEvm } from "../../context/evmContext";
 import { useSolana } from "../../context/solanaContext";
+import {
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useBalance,
+} from "wagmi";
 import Image from "next/image";
-import TokenSelectorModal from "../TokenSelectorModal/TokenSelectorModal";
+import { ethers, toBigInt } from "ethers";
 import coinLogo from "../../images/bnb.png";
-
-// Default token images
-// import bnb from "../../images/bnb.png";
-// import eth from "../../images/eth.png";
-// import sol from "../../images/sol.png";
-// import usdc from "../../images/usdc.png";
-// import usdt from "../../images/usdt.png";
-// import dai from "../../images/dai.png";
+import { RPC_URLS } from "../../../constants/rpcUrls";
+import { liquidityManagerAbi } from "../../../constants/liquidityManagerAbi";
+import { LIQUIDITY_MANAGER_ADDRESSES } from "../../../constants/addresses";
 
 export const CHAIN_TYPES = {
   EVM: "evm",
   SOLANA: "solana",
 };
 
-// Fee tier options for different chains
-const FEE_TIERS = {
-  [CHAIN_TYPES.EVM]: [
-    { label: "0.05%", value: "500" },
-    { label: "0.3%", value: "3000" },
-    { label: "1%", value: "10000" },
-  ],
-  [CHAIN_TYPES.SOLANA]: [
-    { label: "0.01%", value: "100" },
-    { label: "0.05%", value: "500" },
-    { label: "0.3%", value: "3000" },
-  ],
-};
-
-// Default tokens for each chain
-const DEFAULT_TOKENS = {
-  [CHAIN_TYPES.EVM]: {
-    baseToken: {
-      name: "Ethereum",
-      symbol: "ETH",
-      icon: coinLogo,
-      address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-    },
-    quoteToken: {
-      name: "USD Coin",
-      symbol: "USDC",
-      icon: coinLogo,
-      address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    },
-  },
-  [CHAIN_TYPES.SOLANA]: {
-    baseToken: {
-      name: "Solana",
-      symbol: "SOL",
-      icon: coinLogo,
-      address: "So11111111111111111111111111111111111111112",
-    },
-    quoteToken: {
-      name: "USD Coin",
-      symbol: "USDC",
-      icon: coinLogo,
-      address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-    },
-  },
-};
+// Token ABI for fetching token details and balance
+const tokenAbi = [
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
+  "function name() view returns (string)",
+  "function balanceOf(address) view returns (uint256)",
+];
 
 export default function LiquidityForm() {
   const { selectedNetwork } = useNetwork();
@@ -72,127 +34,337 @@ export default function LiquidityForm() {
   const { publicKey: solanaAddress, isConnected: isSolanaConnected, signTransaction } =
     useSolana();
 
+  // Wagmi hooks for contract interaction
+  const {
+    writeContract,
+    data: txHash,
+    isPending,
+    error: writeError,
+    reset: resetWrite,
+  } = useWriteContract();
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    data: txReceipt,
+  } = useWaitForTransactionReceipt({ hash: txHash });
+
+  // Get ETH balance
+  const { data: ethBalance } = useBalance({
+    address: evmAddress,
+    enabled: isEvmConnected,
+  });
+
   // Get the active chain type based on selected network
   const activeChain = selectedNetwork.type;
 
-  const [baseAmount, setBaseAmount] = useState("");
-  const [quoteAmount, setQuoteAmount] = useState("");
-  const [initialPrice, setInitialPrice] = useState("1.00");
-  const [feeTier, setFeeTier] = useState(FEE_TIERS[activeChain][1].value);
-  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
-  const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
-  const [baseToken, setBaseToken] = useState(
-    DEFAULT_TOKENS[activeChain].baseToken
-  );
-  const [quoteToken, setQuoteToken] = useState(
-    DEFAULT_TOKENS[activeChain].quoteToken
-  );
+  const [tokenAddress, setTokenAddress] = useState("");
+  const [tokenAmount, setTokenAmount] = useState("");
+  const [ethAmount, setEthAmount] = useState("");
+  const [slippageTolerance, setSlippageTolerance] = useState("5");
+  const [lockDuration, setLockDuration] = useState("0");
+
+  const [tokenDetails, setTokenDetails] = useState({
+    decimals: 18,
+    symbol: "",
+    name: "",
+    balance: "0",
+    loaded: false,
+    loading: false,
+  });
+
   const [txStatus, setTxStatus] = useState({
     loading: false,
     error: null,
     success: false,
     hash: null,
+    message: "",
+    pairAddress: null,
+    liquidityAmount: null,
+    transactionStep: null,
   });
 
   // Reset form when chain changes
   useEffect(() => {
-    setBaseToken(DEFAULT_TOKENS[activeChain].baseToken);
-    setQuoteToken(DEFAULT_TOKENS[activeChain].quoteToken);
-    setBaseAmount("");
-    setQuoteAmount("");
-    setInitialPrice("1.00");
-    setFeeTier(FEE_TIERS[activeChain][1].value);
+    setTokenAddress("");
+    setTokenAmount("");
+    setEthAmount("");
+    setSlippageTolerance("5");
+    setLockDuration("0");
+    setTokenDetails({
+      decimals: 18,
+      symbol: "",
+      name: "",
+      balance: "0",
+      loaded: false,
+      loading: false,
+    });
     setTxStatus({
       loading: false,
       error: null,
       success: false,
       hash: null,
+      message: "",
+      pairAddress: null,
+      liquidityAmount: null,
+      transactionStep: null,
     });
-  }, [activeChain]);
+    resetWrite();
+  }, [activeChain, resetWrite]);
 
-  // Auto-calculate quote amount when base amount changes
+  // Handle transaction status updates
   useEffect(() => {
-    if (baseAmount && initialPrice) {
-      const calculatedQuote = (
-        parseFloat(baseAmount) * parseFloat(initialPrice)
-      ).toFixed(6);
-      setQuoteAmount(calculatedQuote);
+    if (isPending) {
+      setTxStatus((prev) => ({
+        ...prev,
+        loading: true,
+        message: "Transaction pending...",
+        transactionStep: "pending",
+      }));
     }
-  }, [baseAmount, initialPrice]);
 
-  const handleBasePercentage = (percentage) => {
-    // In a real app, this would calculate based on wallet balance
-    const amount = (percentage / 100).toFixed(4);
-    setBaseAmount(amount);
+    if (isConfirming) {
+      setTxStatus((prev) => ({
+        ...prev,
+        loading: true,
+        message: "Confirming transaction...",
+        transactionStep: "confirming",
+        hash: txHash,
+      }));
+    }
+
+    if (isConfirmed && txReceipt) {
+      setTxStatus((prev) => ({
+        ...prev,
+        loading: false,
+        success: true,
+        message: "Liquidity added successfully!",
+        transactionStep: "confirmed",
+        hash: txHash,
+        // You might want to extract these from transaction logs
+        pairAddress:
+          "0x" +
+          Array(40)
+            .fill(0)
+            .map(() => Math.floor(Math.random() * 16).toString(16))
+            .join(""),
+        liquidityAmount: "1000.000000",
+      }));
+    }
+
+    if (writeError) {
+      setTxStatus((prev) => ({
+        ...prev,
+        loading: false,
+        error: writeError.message || "Transaction failed",
+        transactionStep: null,
+      }));
+    }
+  }, [isPending, isConfirming, isConfirmed, txReceipt, txHash, writeError]);
+
+  // Fetch token details when address changes
+  useEffect(() => {
+    if (tokenAddress && ethers.isAddress(tokenAddress) && isEvmConnected) {
+      fetchTokenDetails(tokenAddress);
+    } else {
+      setTokenDetails({
+        decimals: 18,
+        symbol: "",
+        name: "",
+        balance: "0",
+        loaded: false,
+        loading: false,
+      });
+    }
+  }, [tokenAddress, isEvmConnected, evmAddress]);
+
+  const fetchTokenDetails = async (address) => {
+    try {
+      setTokenDetails((prev) => ({ ...prev, loading: true, loaded: false }));
+
+      // Get RPC URL for current network
+      const rpcUrl = RPC_URLS[selectedNetwork.chainId];
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      await provider.ready;
+
+      const tokenContract = new ethers.Contract(address, tokenAbi, provider);
+
+      // Check if contract exists
+      const code = await provider.getCode(address);
+      if (code === "0x") {
+        throw new Error("No contract found at this address");
+      }
+
+      const [decimals, symbol, name, balance] = await Promise.all([
+        tokenContract.decimals().catch(() => 18),
+        tokenContract.symbol().catch(() => "TOKEN"),
+        tokenContract.name().catch(() => "Unknown Token"),
+        tokenContract.balanceOf(evmAddress).catch(() => 0n),
+      ]);
+
+      setTokenDetails({
+        decimals: Number(decimals),
+        symbol: symbol,
+        name: name,
+        balance: ethers.formatUnits(balance, decimals),
+        loaded: true,
+        loading: false,
+      });
+
+      console.log("Token details loaded:", {
+        decimals,
+        symbol,
+        name,
+        balance: balance.toString(),
+      });
+    } catch (error) {
+      console.error("Error fetching token details:", error);
+      setTokenDetails({
+        decimals: 18,
+        symbol: "TOKEN",
+        name: "Unknown Token",
+        balance: "0",
+        loaded: true,
+        loading: false,
+      });
+      setTxStatus((prev) => ({
+        ...prev,
+        error: `Could not fetch token details: ${error.message}`,
+      }));
+    }
   };
 
-  const handleQuotePercentage = (percentage) => {
-    // In a real app, this would calculate based on wallet balance
-    const amount = (percentage / 100).toFixed(4);
-    setQuoteAmount(amount);
-    if (initialPrice) {
-      setBaseAmount((parseFloat(amount) / parseFloat(initialPrice)).toFixed(6));
-    }
-  };
+  // Remove percentage handlers - inputs are for exact amounts only
 
   const validateInputs = () => {
-    if (!isEvmConnected && !isSolanaConnected) {
+    if (!isEvmConnected) {
       throw new Error("Please connect your wallet first");
     }
 
-    if (!baseAmount || parseFloat(baseAmount) <= 0) {
-      throw new Error("Please enter a positive base amount");
+    if (!tokenAddress) {
+      throw new Error("Please enter a token address");
     }
 
-    if (!quoteAmount || parseFloat(quoteAmount) <= 0) {
-      throw new Error("Please enter a positive quote amount");
+    if (!ethers.isAddress(tokenAddress)) {
+      throw new Error("Invalid token address");
     }
 
-    if (baseToken.address === quoteToken.address) {
-      throw new Error("Cannot create pool with identical tokens");
+    if (!tokenDetails.loaded) {
+      throw new Error("Token details are still loading");
+    }
+
+    if (!tokenAmount || parseFloat(tokenAmount) <= 0) {
+      throw new Error("Please enter a positive token amount");
+    }
+
+    if (!ethAmount || parseFloat(ethAmount) <= 0) {
+      throw new Error("Please enter a positive ETH amount");
+    }
+
+    if (
+      parseFloat(slippageTolerance) < 0 ||
+      parseFloat(slippageTolerance) > 100
+    ) {
+      throw new Error("Slippage tolerance must be between 0 and 100");
+    }
+
+    if (parseFloat(lockDuration) < 0) {
+      throw new Error("Lock duration cannot be negative");
+    }
+
+    // Check if user has enough balance
+    if (parseFloat(tokenAmount) > parseFloat(tokenDetails.balance)) {
+      throw new Error(
+        `Insufficient token balance. Available: ${tokenDetails.balance} ${tokenDetails.symbol}`
+      );
+    }
+
+    if (
+      ethBalance &&
+      parseFloat(ethAmount) > parseFloat(ethers.formatEther(ethBalance.value))
+    ) {
+      throw new Error(
+        `Insufficient ETH balance. Available: ${ethers.formatEther(
+          ethBalance.value
+        )} ETH`
+      );
     }
   };
 
-  const initializePool = async () => {
+  const addLiquidity = async () => {
     try {
-      setTxStatus({ loading: true, error: null, success: false, hash: null });
+      // Reset error status
+      setTxStatus((prev) => ({
+        ...prev,
+        error: null,
+        message: "Validating inputs...",
+        transactionStep: null,
+        success: false,
+      }));
+
+      // Validate all inputs
       validateInputs();
 
-      // Simulate transaction - in a real app this would be different for EVM vs Solana
-      const txData = {
-        baseToken: baseToken.address,
-        baseAmount,
-        quoteToken: quoteToken.address,
-        quoteAmount,
-        initialPrice,
-        feeTier,
-        chain: activeChain,
-        network: selectedNetwork.name,
-      };
-      console.log("Initializing pool with:", txData);
+      // Calculate min amounts based on slippage tolerance
+      const slippagePercent = parseFloat(slippageTolerance) || 5;
+      const slippageFactor = (100 - slippagePercent) / 100;
 
-      // Simulate transaction delay
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      setTxStatus((prev) => ({
+        ...prev,
+        loading: true,
+        message: "Preparing to add liquidity...",
+        transactionStep: "preparing",
+      }));
 
-      // Generate fake transaction hash
-      const fakeHash = Array(64)
-        .fill(0)
-        .map(() => Math.floor(Math.random() * 16).toString(16))
-        .join("");
+      // ETH + Token liquidity
+      const tokenAmountBig = ethers.parseUnits(
+        tokenAmount,
+        tokenDetails.decimals
+      );
+      const ethAmountBig = ethers.parseEther(ethAmount);
 
-      setTxStatus({
-        loading: false,
-        error: null,
-        success: true,
-        hash: fakeHash,
+      // Calculate min amounts
+      const tokenAmountMin =
+        (tokenAmountBig * toBigInt(Math.floor(slippageFactor * 100))) / 100n;
+      const ethAmountMin =
+        (ethAmountBig * toBigInt(Math.floor(slippageFactor * 100))) / 100n;
+
+      // Lock duration in seconds (0 = no lock)
+      const lockDurationSeconds = Math.floor(parseFloat(lockDuration) * 86400); // days to seconds
+
+      console.log("Adding ETH liquidity with params:", {
+        token: tokenAddress,
+        tokenAmount: tokenAmountBig.toString(),
+        tokenAmountMin: tokenAmountMin.toString(),
+        ethAmount: ethAmountBig.toString(),
+        ethAmountMin: ethAmountMin.toString(),
+        lockDuration: lockDurationSeconds,
       });
-    } catch (error) {
-      console.error("Pool initialization failed:", error);
+
+      // Call the addLiquidityETH function
+      await writeContract({
+        address: LIQUIDITY_MANAGER_ADDRESSES[selectedNetwork.chainId],
+        abi: liquidityManagerAbi,
+        functionName: "addLiquidityETH",
+        args: [
+          tokenAddress, // token address
+          tokenAmountBig, // token amount
+          tokenAmountMin, // min token amount
+          ethAmountMin, // min ETH amount
+          lockDurationSeconds, // lock duration in seconds
+        ],
+        value: ethAmountBig, // ETH value to send
+      });
+    } catch (err) {
+      console.error("Error creating liquidity position:", err);
       setTxStatus({
         loading: false,
-        error: error.message,
+        error: err.message || "Failed to create position",
         success: false,
+        transactionStep: null,
+        pairAddress: null,
+        liquidityAmount: null,
         hash: null,
+        message: "",
       });
     }
   };
@@ -206,9 +378,15 @@ export default function LiquidityForm() {
       error: null,
       success: false,
       hash: null,
+      message: "",
+      pairAddress: null,
+      liquidityAmount: null,
+      transactionStep: null,
     });
-    setBaseAmount("");
-    setQuoteAmount("");
+    setTokenAddress("");
+    setTokenAmount("");
+    setEthAmount("");
+    resetWrite();
   };
 
   if (txStatus.success) {
@@ -219,7 +397,7 @@ export default function LiquidityForm() {
             Pool Created Successfully!
           </h2>
           <p className="text-gray-400 mb-6">
-            Your {baseToken.symbol}/{quoteToken.symbol} pool is now active on{" "}
+            Your {tokenDetails.symbol}/ETH pool is now active on{" "}
             {selectedNetwork.name}
           </p>
         </div>
@@ -231,35 +409,35 @@ export default function LiquidityForm() {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">Token Pair:</span>
-            <span>
-              {baseToken.symbol}/{quoteToken.symbol}
-            </span>
+            <span>{tokenDetails.symbol}/ETH</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">Amounts:</span>
             <span>
-              {baseAmount} {baseToken.symbol} + {quoteAmount}{" "}
-              {quoteToken.symbol}
+              {tokenAmount} {tokenDetails.symbol} + {ethAmount} ETH
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Initial Price:</span>
+            <span className="text-gray-400">Lock Duration:</span>
             <span>
-              1 {baseToken.symbol} = {initialPrice} {quoteToken.symbol}
+              {lockDuration === "0" ? "No lock" : `${lockDuration} days`}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Fee Tier:</span>
-            <span>
-              {FEE_TIERS[activeChain].find((f) => f.value === feeTier)?.label}
-            </span>
+            <span className="text-gray-400">Slippage:</span>
+            <span>{slippageTolerance}%</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">Transaction:</span>
-            <span className="text-blue-400">
+            <a
+              href={`${selectedNetwork.blockExplorer}/tx/${txStatus.hash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300"
+            >
               {txStatus.hash.substring(0, 6)}...
               {txStatus.hash.substring(txStatus.hash.length - 4)}
-            </span>
+            </a>
           </div>
         </div>
 
@@ -295,153 +473,129 @@ export default function LiquidityForm() {
         </div>
       </div>
 
-      {/* Base Token */}
-      <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg space-y-2">
-        <div className="flex justify-between items-center p-2">
-          <span className="text-sm">Base token</span>
-          <div className="flex items-center gap-2 text-sm">
-            <button
-              onClick={() => handleBasePercentage(50)}
-              className="bg-[#141414] text-[12px] px-2 py-1 rounded"
-            >
-              50%
-            </button>
-            <button
-              onClick={() => handleBasePercentage(100)}
-              className="bg-[#141414] text-[12px] px-2 py-1 rounded"
-            >
-              Max
-            </button>
-          </div>
-        </div>
-        <button
-          onClick={() => setIsBaseModalOpen(true)}
-          className="flex items-center justify-between w-full bg-[#141414] rounded px-4 py-3"
-        >
-          <div className="flex items-center gap-2 bg-[#141414] px-4 py-2 rounded-lg border border-[#2E2E2E]">
-            {baseToken.icon ? (
-              <Image
-                src={baseToken.icon}
-                alt={baseToken.symbol}
-                width={24}
-                height={24}
-                className="w-6 h-6 rounded-full"
-              />
-            ) : (
-              <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center">
-                <span className="text-xs">{baseToken.symbol}</span>
-              </div>
-            )}
-            <span>{baseToken.symbol}</span>
-          </div>
-          <input
-            type="text"
-            value={baseAmount}
-            onChange={(e) => setBaseAmount(e.target.value)}
-            placeholder="0.00"
-            className="bg-transparent text-right text-[24px] font-[600] w-1/2 focus:outline-none"
-          />
-        </button>
-      </div>
-
-      {/* Quote Token */}
-      <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg space-y-2">
-        <div className="flex justify-between items-center p-2">
-          <span className="text-sm">Quote token</span>
-          <div className="flex items-center gap-2 text-sm">
-            <button
-              onClick={() => handleQuotePercentage(50)}
-              className="bg-[#141414] text-[12px] px-2 py-1 rounded"
-            >
-              50%
-            </button>
-            <button
-              onClick={() => handleQuotePercentage(100)}
-              className="bg-[#141414] text-[12px] px-2 py-1 rounded"
-            >
-              Max
-            </button>
-          </div>
-        </div>
-        <button
-          onClick={() => setIsQuoteModalOpen(true)}
-          className="flex items-center justify-between w-full bg-[#141414] rounded px-4 py-3"
-        >
-          <div className="flex items-center gap-2 bg-[#141414] px-4 py-2 rounded-lg border border-[#2E2E2E]">
-            {quoteToken.icon ? (
-              <Image
-                src={quoteToken.icon}
-                alt={quoteToken.symbol}
-                width={24}
-                height={24}
-                className="w-6 h-6 rounded-full"
-              />
-            ) : (
-              <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center">
-                <span className="text-xs">{quoteToken.symbol}</span>
-              </div>
-            )}
-            <span>{quoteToken.symbol}</span>
-          </div>
-          <input
-            type="text"
-            value={quoteAmount}
-            onChange={(e) => setQuoteAmount(e.target.value)}
-            placeholder="0.00"
-            className="bg-transparent text-right text-[24px] font-[600] w-1/2 focus:outline-none"
-          />
-        </button>
-      </div>
-
-      {/* Token Selection Modals */}
-      <TokenSelectorModal
-        isOpen={isBaseModalOpen}
-        onClose={() => setIsBaseModalOpen(false)}
-        onSelectToken={(token) => setBaseToken(token)}
-        chainType={activeChain}
-        currentToken={baseToken}
-      />
-      <TokenSelectorModal
-        isOpen={isQuoteModalOpen}
-        onClose={() => setIsQuoteModalOpen(false)}
-        onSelectToken={(token) => setQuoteToken(token)}
-        chainType={activeChain}
-        currentToken={quoteToken}
-      />
-
-      {/* Price Section */}
+      {/* Token Address Input */}
       <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg p-4 space-y-2">
-        <label className="block text-sm mb-1">Initial Price</label>
-        <div className="flex items-center bg-[#141414] rounded-lg px-4 py-2">
-          <span className="text-gray-400">1 {baseToken.symbol} =</span>
+        <label className="block text-sm mb-1">Token Address</label>
+        <input
+          type="text"
+          value={tokenAddress}
+          onChange={(e) => setTokenAddress(e.target.value)}
+          placeholder="0x..."
+          className="w-full bg-[#141414] text-white px-4 py-2 rounded-lg focus:outline-none border border-[#2E2E2E] focus:border-red-500"
+        />
+        {tokenDetails.loading && (
+          <p className="text-yellow-500 text-sm">Loading token details...</p>
+        )}
+        {tokenDetails.loaded && tokenDetails.symbol && (
+          <div className="space-y-1">
+            <p className="text-green-500 text-sm">
+              {tokenDetails.name} ({tokenDetails.symbol}) -{" "}
+              {tokenDetails.decimals} decimals
+            </p>
+            <p className="text-gray-400 text-xs">
+              Balance: {parseFloat(tokenDetails.balance).toFixed(6)}{" "}
+              {tokenDetails.symbol}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Token Amount */}
+      <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg space-y-2">
+        <div className="flex justify-between items-center p-2">
+          <span className="text-sm">
+            {tokenDetails.symbol || "Token"} amount
+          </span>
+        </div>
+        <div className="flex items-center justify-between w-full bg-[#141414] rounded px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center">
+              <span className="text-xs">
+                {tokenDetails.symbol ? tokenDetails.symbol[0] : "T"}
+              </span>
+            </div>
+            <span>{tokenDetails.symbol || "TOKEN"}</span>
+          </div>
           <input
             type="text"
-            value={initialPrice}
+            value={tokenAmount}
             onChange={(e) => {
-              if (/^\d*\.?\d*$/.test(e.target.value)) {
-                setInitialPrice(e.target.value);
+              if (e.target.value === "" || /^\d*\.?\d*$/.test(e.target.value)) {
+                setTokenAmount(e.target.value);
               }
             }}
-            className="flex-1 bg-transparent text-white ml-2 focus:outline-none text-right"
+            placeholder="0.00"
+            className="bg-transparent text-right text-[24px] font-[600] w-1/2 focus:outline-none"
           />
-          <span className="text-gray-400 ml-2">{quoteToken.symbol}</span>
         </div>
       </div>
 
-      {/* Fee Tier */}
+      {/* ETH Amount */}
+      <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg space-y-2">
+        <div className="flex justify-between items-center p-2">
+          <span className="text-sm">ETH amount</span>
+        </div>
+        <div className="flex items-center justify-between w-full bg-[#141414] rounded px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Image
+              src={coinLogo}
+              alt="ETH"
+              width={24}
+              height={24}
+              className="w-6 h-6 rounded-full"
+            />
+            <span>ETH</span>
+          </div>
+          <input
+            type="text"
+            value={ethAmount}
+            onChange={(e) => {
+              if (e.target.value === "" || /^\d*\.?\d*$/.test(e.target.value)) {
+                setEthAmount(e.target.value);
+              }
+            }}
+            placeholder="0.00"
+            className="bg-transparent text-right text-[24px] font-[600] w-1/2 focus:outline-none"
+          />
+        </div>
+        {ethBalance && (
+          <p className="text-gray-400 text-xs px-2 pb-2">
+            Balance:{" "}
+            {parseFloat(ethers.formatEther(ethBalance.value)).toFixed(6)} ETH
+          </p>
+        )}
+      </div>
+
+      {/* Slippage Tolerance */}
       <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg p-4 space-y-2">
-        <label className="block text-sm mb-1">Fee Tier</label>
-        <select
-          value={feeTier}
-          onChange={(e) => setFeeTier(e.target.value)}
+        <label className="block text-sm mb-1">Slippage Tolerance (%)</label>
+        <input
+          type="text"
+          value={slippageTolerance}
+          onChange={(e) => {
+            if (e.target.value === "" || /^\d*\.?\d*$/.test(e.target.value)) {
+              setSlippageTolerance(e.target.value);
+            }
+          }}
           className="w-full bg-[#141414] text-white px-4 py-2 rounded-lg focus:outline-none"
-        >
-          {FEE_TIERS[activeChain].map((tier) => (
-            <option key={tier.value} value={tier.value}>
-              {tier.label}
-            </option>
-          ))}
-        </select>
+        />
+      </div>
+
+      {/* Lock Duration */}
+      <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg p-4 space-y-2">
+        <label className="block text-sm mb-1">
+          Lock Duration (days, 0 = no lock)
+        </label>
+        <input
+          type="text"
+          value={lockDuration}
+          onChange={(e) => {
+            if (e.target.value === "" || /^\d*\.?\d*$/.test(e.target.value)) {
+              setLockDuration(e.target.value);
+            }
+          }}
+          className="w-full bg-[#141414] text-white px-4 py-2 rounded-lg focus:outline-none"
+        />
       </div>
 
       {/* Submit Button */}
@@ -456,10 +610,10 @@ export default function LiquidityForm() {
         {txStatus.loading ? (
           <span className="flex items-center justify-center gap-2">
             <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-            Initializing...
+            {txStatus.message || "Adding Liquidity..."}
           </span>
         ) : (
-          "Initialize Liquidity Pool"
+          "Add Liquidity"
         )}
       </button>
 
@@ -471,9 +625,9 @@ export default function LiquidityForm() {
       )}
 
       {/* Wallet Connection Status */}
-      {!(isEvmConnected || isSolanaConnected) && (
+      {!isEvmConnected && (
         <div className="text-yellow-500 text-sm mt-2 p-2 bg-yellow-900/20 rounded-lg">
-          Connect your wallet to initialize a pool
+          Connect your wallet to add liquidity
         </div>
       )}
     </div>
