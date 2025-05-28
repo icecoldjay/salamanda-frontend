@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 
 const SolanaContext = createContext();
 
@@ -15,6 +15,7 @@ export function SolanaProvider({ children }) {
   const [publicKey, setPublicKey] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectedWallet, setConnectedWallet] = useState(null);
+  const [wallet, setWallet] = useState(null);
 
   const detectWallet = (walletName) => {
     switch (walletName) {
@@ -35,9 +36,9 @@ export function SolanaProvider({ children }) {
 
   const connectSolana = async (walletName) => {
     try {
-      const wallet = detectWallet(walletName);
+      const detectedWallet = detectWallet(walletName);
 
-      if (!wallet) {
+      if (!detectedWallet) {
         // Redirect to wallet download page if not installed
         const downloadUrls = {
           [SOLANA_WALLETS.PHANTOM]: "https://phantom.com/download",
@@ -50,20 +51,11 @@ export function SolanaProvider({ children }) {
         throw new Error(`${walletName} wallet not installed`);
       }
 
-      // Standard Solana wallet interface
-      if (wallet.connect) {
-        const response = await wallet.connect();
-        setPublicKey(response.publicKey.toString());
+      if (detectedWallet.connect) {
+        await detectedWallet.connect();
+        setPublicKey(detectedWallet.publicKey.toString());
         setConnectedWallet(walletName);
-        setIsConnected(true);
-        return true;
-      }
-
-      // Some wallets might have different interfaces
-      if (wallet.connect) {
-        await wallet.connect();
-        setPublicKey(wallet.publicKey.toString());
-        setConnectedWallet(walletName);
+        setWallet(detectedWallet);
         setIsConnected(true);
         return true;
       }
@@ -77,22 +69,17 @@ export function SolanaProvider({ children }) {
 
   const disconnectSolana = async () => {
     try {
-      if (connectedWallet) {
-        const wallet = detectWallet(connectedWallet);
-        if (wallet?.disconnect) {
-          await wallet.disconnect();
-        }
+      if (wallet?.disconnect) {
+        await wallet.disconnect();
       }
       setPublicKey(null);
       setIsConnected(false);
       setConnectedWallet(null);
+      setWallet(null);
     } catch (error) {
       console.error("Solana disconnection error:", error);
     }
   };
-
-  // Existing useEffect for event listeners remains the same
-  // ...
 
   return (
     <SolanaContext.Provider
@@ -100,9 +87,12 @@ export function SolanaProvider({ children }) {
         isConnected,
         publicKey,
         connectedWallet,
+        wallet,
         connectSolana,
         disconnectSolana,
         supportedWallets: Object.values(SOLANA_WALLETS),
+        signTransaction: wallet?.signTransaction?.bind(wallet),
+        signAllTransactions: wallet?.signAllTransactions?.bind(wallet),
       }}
     >
       {children}

@@ -69,7 +69,7 @@ const DEFAULT_TOKENS = {
 export default function LiquidityForm() {
   const { selectedNetwork } = useNetwork();
   const { address: evmAddress, isConnected: isEvmConnected } = useEvm();
-  const { publicKey: solanaAddress, isConnected: isSolanaConnected } =
+  const { publicKey: solanaAddress, isConnected: isSolanaConnected, signTransaction } =
     useSolana();
 
   // Get the active chain type based on selected network
@@ -169,7 +169,6 @@ export default function LiquidityForm() {
         chain: activeChain,
         network: selectedNetwork.name,
       };
-
       console.log("Initializing pool with:", txData);
 
       // Simulate transaction delay
@@ -197,6 +196,9 @@ export default function LiquidityForm() {
       });
     }
   };
+
+
+
 
   const handleCreateAnother = () => {
     setTxStatus({
@@ -446,11 +448,10 @@ export default function LiquidityForm() {
       <button
         onClick={initializePool}
         disabled={txStatus.loading || !baseAmount || !quoteAmount}
-        className={`w-full ${
-          txStatus.loading
-            ? "bg-gray-600 cursor-not-allowed"
-            : "bg-red-900 hover:bg-red-800"
-        } text-white py-3 rounded-lg mt-4 transition-colors`}
+        className={`w-full ${txStatus.loading
+          ? "bg-gray-600 cursor-not-allowed"
+          : "bg-red-900 hover:bg-red-800"
+          } text-white py-3 rounded-lg mt-4 transition-colors`}
       >
         {txStatus.loading ? (
           <span className="flex items-center justify-center gap-2">

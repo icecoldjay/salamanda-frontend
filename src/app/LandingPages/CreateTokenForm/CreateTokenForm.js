@@ -3,22 +3,109 @@
 import React, { useState, useEffect } from "react";
 import { useTokenCreation } from "../../context/tokenCreationContext";
 import { useNetwork } from "../../context/networkContext";
+import { useSolana } from "../../context/solanaContext";
+
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
+import { base64 } from "@metaplex-foundation/umi/serializers";
 
 const CreateTokenForm = ({ onNext, onCreateToken }) => {
   const { tokenData, updateTokenData } = useTokenCreation();
   const { isEvm, isSolana } = useNetwork();
   const [isFormValid, setIsFormValid] = useState(false);
+  const { publicKey, isConnected, connectSolana, disconnectSolana, signTransaction } = useSolana();
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [txSignature, setTxSignature] = useState(null);
+  const [umi, setUmi] = useState(null);
+
+  console.log(`evm ${isEvm()}, sol: ${isSolana()}`);
 
   useEffect(() => {
     const { name, symbol, decimals, supply, description } = tokenData;
     setIsFormValid(
       name.trim() !== "" &&
-        symbol.trim() !== "" &&
-        decimals.trim() !== "" &&
-        supply.trim() !== "" &&
-        description.trim() !== ""
+      symbol.trim() !== "" &&
+      decimals.trim() !== "" &&
+      supply.trim() !== "" &&
+      description.trim() !== ""
     );
   }, [tokenData]);
+
+  //useEffect for umi transaction
+  useEffect(() => {
+    if (!isSolana || !publicKey) {
+      setUmi(null); // Clear umi if it's not Solana or wallet not connected
+      return;
+    }
+
+    const umiInstance = createUmi("https://api.devnet.solana.com");
+    umiInstance.use(walletAdapterIdentity({ publicKey, signTransaction }));
+    setUmi(umiInstance);
+  }, [isSolana, isConnected, publicKey, signTransaction]);
+
+
+  //function to handle token creation
+  const handleMint = async () => {
+    if (!umi) {
+      setStatus("Wallet not connected or UMI not initialized");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setStatus("Requesting transaction from backend...");
+
+      const response = await fetch("http://localhost:5000/createTokenWithMetadata", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: tokenData.name,
+          symbol: tokenData.symbol,
+          uri: "https://example.com/metadata.json",
+          amount: tokenData.supply * 10 ** tokenData.decimals,
+          decimals: tokenData.decimals,
+          revokeMintAuthority: tokenData.revokeMint,
+          revokeFreezeAuthority: tokenData.revokeFreeze,
+          recipientAddress: publicKey.toString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get transaction from backend");
+      }
+
+      const { transactionForSign, mint } = await response.json();
+      console.log(transactionForSign)
+      if (!transactionForSign) {
+        setStatus("No transaction returned from backend");
+        setLoading(false);
+        return;
+      }
+
+      // Deserialize the transaction using UMI
+      const txBytes = base64.serialize(transactionForSign);
+      const recoveredTx = umi.transactions.deserialize(txBytes);
+
+      setStatus("Signing transaction with wallet...");
+      // Sign transaction using umi.identity which uses wallet adapter signer
+      const signedTx = await umi.identity.signTransaction(recoveredTx);
+
+      setStatus("Sending transaction...");
+      const signature = await umi.rpc.sendTransaction(signedTx);
+
+      setTxSignature(signature);
+      setStatus(`Transaction sent! Signature: ${signature}, mint: ${mint}`);
+      alert(`mint Address: ${mint}`);
+    } catch (error) {
+      console.error("Transaction error:", error);
+      setStatus(`Transaction failed: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,6 +114,7 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
 
   const handleToggle = (name) => {
     updateTokenData({ [name]: !tokenData[name] });
+    console.log(`Toggled ${name}: ${!tokenData[name]}`);
   };
 
   const handleFileChange = (e) => {
@@ -47,6 +135,8 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
       onNext();
     }
   };
+
+
 
   return (
     <div className="min-h-screen text-white font-[Archivo] flex items-center justify-center px-4 mt-6">
@@ -236,12 +326,11 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
 
         <button
           disabled={!isFormValid}
-          onClick={handleButtonClick}
-          className={`w-full py-3 rounded-md mt-4 transition-colors duration-200 ${
-            isFormValid
-              ? "bg-[#2D0101] hover:bg-[#2D0101] text-white cursor-pointer"
-              : "bg-gray-800 text-gray-500 cursor-not-allowed"
-          }`}
+          onClick={isSolana ? handleMint : handleButtonClick}
+          className={`w - full py - 3 rounded - md mt - 4 transition - colors duration - 200 ${isFormValid
+            ? "bg-[#2D0101] hover:bg-[#2D0101] text-white cursor-pointer"
+            : "bg-gray-800 text-gray-500 cursor-not-allowed"
+            }`}
         >
           {tokenData.bundleLaunch ? "Create Token" : "Continue to Launch"}
         </button>
