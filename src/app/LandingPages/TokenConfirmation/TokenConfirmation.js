@@ -13,9 +13,20 @@ const TokenConfirmation = ({ onRestart }) => {
 
     let explorerUrl = "";
     if (selectedNetwork.type === "evm") {
-      explorerUrl = `${selectedNetwork.blockExplorer}/address/${createdToken.address}`;
+      explorerUrl = `${selectedNetwork.blockExplorer}/token/${createdToken.address}`;
     } else {
       explorerUrl = `https://explorer.solana.com/address/${createdToken.address}`;
+    }
+    window.open(explorerUrl, "_blank");
+  };
+
+  const viewTxOnExplorer = () => {
+    if (!createdToken || !createdToken.transactionHash) return;
+    let explorerUrl = "";
+    if (selectedNetwork.type === "evm") {
+      explorerUrl = `${selectedNetwork.blockExplorer}/tx/${createdToken.transactionHash}`;
+    } else {
+      explorerUrl = `https://explorer.solana.com/tx/${createdToken.transactionHash}`;
     }
     window.open(explorerUrl, "_blank");
   };
@@ -72,6 +83,13 @@ const TokenConfirmation = ({ onRestart }) => {
             </div>
           </div>
         )}
+
+        <button
+          onClick={viewTxOnExplorer}
+          className="bg-red-900 hover:bg-red-800 px-6 py-3 rounded-md font-semibold text-white w-full max-w-md"
+        >
+          View transaction on explorer
+        </button>
 
         <button
           onClick={viewOnExplorer}

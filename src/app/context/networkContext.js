@@ -6,69 +6,69 @@ import sol from "../images/sol.svg";
 import polygon from "../images/polygon.svg";
 
 export const NETWORKS = {
-  BSC: {
-    id: "bsc",
-    name: "BNB Smart Chain",
-    symbol: "BNB",
-    chainId: 56,
-    chainIdHex: "0x38",
-    rpcUrl: "https://bsc-dataseed.binance.org/",
-    blockExplorer: "https://bscscan.com",
+  BSC_TESTNET: {
+    id: "bsc-testnet",
+    name: "BNB Smart Chain Testnet",
+    symbol: "tBNB",
+    chainId: 97,
+    chainIdHex: "0x61",
+    rpcUrl: "https://data-seed-prebsc-1-s1.binance.org:8545/",
+    blockExplorer: "https://testnet.bscscan.com",
     type: "evm",
     icon: bnb,
   },
-  ETHEREUM: {
-    id: "ethereum",
-    name: "Ethereum",
-    symbol: "ETH",
-    chainId: 1,
-    chainIdHex: "0x1",
-    rpcUrl: "https://mainnet.infura.io/v3/YOUR_INFURA_ID",
-    blockExplorer: "https://etherscan.io",
+  SEPOLIA: {
+    id: "sepolia",
+    name: "Ethereum Sepolia",
+    symbol: "SepoliaETH",
+    chainId: 11155111,
+    chainIdHex: "0xaa36a7",
+    rpcUrl: "https://sepolia.infura.io/v3/YOUR_INFURA_ID",
+    blockExplorer: "https://sepolia.etherscan.io",
     type: "evm",
     icon: eth,
   },
-  POLYGON: {
-    id: "polygon",
-    name: "Polygon",
-    symbol: "MATIC",
-    chainId: 137,
-    chainIdHex: "0x89",
-    rpcUrl: "https://polygon-rpc.com",
-    blockExplorer: "https://polygonscan.com",
+  POLYGON_AMOY: {
+    id: "polygon-amoy",
+    name: "Polygon Amoy",
+    symbol: "POL",
+    chainId: 80002,
+    chainIdHex: "0x13882",
+    rpcUrl: "https://rpc-amoy.polygon.technology",
+    blockExplorer: "https://amoy.polygonscan.com",
     type: "evm",
     icon: polygon,
   },
-  ARBITRUM: {
-    id: "arbitrum",
-    name: "Arbitrum",
-    symbol: "ARB",
-    chainId: 42161,
-    chainIdHex: "0xa4b1",
-    rpcUrl: "https://arb1.arbitrum.io/rpc",
-    blockExplorer: "https://arbiscan.io",
+  ARBITRUM_SEPOLIA: {
+    id: "arbitrum-sepolia",
+    name: "Arbitrum Sepolia",
+    symbol: "ETH",
+    chainId: 421614,
+    chainIdHex: "0x66eee",
+    rpcUrl: "https://sepolia-rollup.arbitrum.io/rpc",
+    blockExplorer: "https://sepolia.arbiscan.io",
     type: "evm",
     icon: eth,
   },
-  BASE: {
-    id: "base",
-    name: "Base",
-    symbol: "BASE",
-    chainId: 8453,
-    chainIdHex: "0x2105",
-    rpcUrl: "https://mainnet.base.org",
-    blockExplorer: "https://basescan.org",
+  BASE_SEPOLIA: {
+    id: "base-sepolia",
+    name: "Base Sepolia",
+    symbol: "ETH",
+    chainId: 84532,
+    chainIdHex: "0x14a34",
+    rpcUrl: "https://sepolia.base.org",
+    blockExplorer: "https://sepolia.basescan.org",
     type: "evm",
     icon: eth,
   },
-  AVALANCHE: {
-    id: "avalanche",
-    name: "Avalanche",
+  AVALANCHE_FUJI: {
+    id: "avalanche-fuji",
+    name: "Avalanche Fuji",
     symbol: "AVAX",
-    chainId: 43114,
-    chainIdHex: "0xA86A",
-    rpcUrl: "https://api.avax.network/ext/bc/C/rpc",
-    blockExplorer: "https://snowtrace.io",
+    chainId: 43113,
+    chainIdHex: "0xA869",
+    rpcUrl: "https://api.avax-test.network/ext/bc/C/rpc",
+    blockExplorer: "https://testnet.snowtrace.io",
     type: "evm",
     icon: eth,
     nativeCurrency: {
@@ -77,12 +77,12 @@ export const NETWORKS = {
       decimals: 18,
     },
   },
-  SOLANA: {
-    id: "solana",
-    name: "Solana",
+  SOLANA_DEVNET: {
+    id: "solana-devnet",
+    name: "Solana Devnet",
     symbol: "SOL",
     type: "solana",
-    endpoint: "https://api.mainnet-beta.solana.com",
+    endpoint: "https://api.devnet.solana.com",
     icon: sol,
   },
 };
@@ -90,7 +90,7 @@ export const NETWORKS = {
 const NetworkContext = createContext();
 
 export function NetworkProvider({ children }) {
-  const [selectedNetwork, setSelectedNetwork] = useState(NETWORKS.BSC);
+  const [selectedNetwork, setSelectedNetwork] = useState(NETWORKS.BSC_TESTNET);
 
   const isEvm = () => selectedNetwork.type === "evm";
   const isSolana = () => selectedNetwork.type === "solana";
