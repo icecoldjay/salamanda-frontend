@@ -9,13 +9,19 @@ import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 import { base64 } from "@metaplex-foundation/umi/serializers";
 
-const CreateTokenForm = ({ onNext, onCreateToken }) => {
+const CreateTokenForm = ({ onNext, onCreateToken, setStep }) => {
   const { tokenData, updateTokenData, isCreating, creationError } =
     useTokenCreation();
   const { isEvm, isSolana } = useNetwork();
   const [isFormValid, setIsFormValid] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const { publicKey, isConnected, connectSolana, disconnectSolana, signTransaction } = useSolana();
+  const {
+    publicKey,
+    isConnected,
+    connectSolana,
+    disconnectSolana,
+    signTransaction,
+  } = useSolana();
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [txSignature, setTxSignature] = useState(null);
@@ -27,10 +33,10 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
     const { name, symbol, decimals, supply, description } = tokenData;
     setIsFormValid(
       name.trim() !== "" &&
-      symbol.trim() !== "" &&
-      decimals.trim() !== "" &&
-      supply.trim() !== "" &&
-      description.trim() !== ""
+        symbol.trim() !== "" &&
+        decimals.trim() !== "" &&
+        supply.trim() !== "" &&
+        description.trim() !== ""
     );
   }, [tokenData]);
 
@@ -46,7 +52,6 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
     setUmi(umiInstance);
   }, [isSolana, isConnected, publicKey, signTransaction]);
 
-
   //function to handle token creation
   const handleMint = async () => {
     if (!umi) {
@@ -58,27 +63,30 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
       setLoading(true);
       setStatus("Requesting transaction from backend...");
 
-      const response = await fetch("http://localhost:5000/createTokenWithMetadata", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: tokenData.name,
-          symbol: tokenData.symbol,
-          uri: "https://example.com/metadata.json",
-          amount: tokenData.supply * 10 ** tokenData.decimals,
-          decimals: tokenData.decimals,
-          revokeMintAuthority: tokenData.revokeMint,
-          revokeFreezeAuthority: tokenData.revokeFreeze,
-          recipientAddress: publicKey.toString(),
-        }),
-      });
+      const response = await fetch(
+        "http://localhost:5000/createTokenWithMetadata",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: tokenData.name,
+            symbol: tokenData.symbol,
+            uri: "https://example.com/metadata.json",
+            amount: tokenData.supply * 10 ** tokenData.decimals,
+            decimals: tokenData.decimals,
+            revokeMintAuthority: tokenData.revokeMint,
+            revokeFreezeAuthority: tokenData.revokeFreeze,
+            recipientAddress: publicKey.toString(),
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to get transaction from backend");
       }
 
       const { transactionForSign, mint } = await response.json();
-      console.log(transactionForSign)
+      console.log(transactionForSign);
       if (!transactionForSign) {
         setStatus("No transaction returned from backend");
         setLoading(false);
@@ -99,6 +107,7 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
       setTxSignature(signature);
       setStatus(`Transaction sent! Signature: ${signature}, mint: ${mint}`);
       alert(`mint Address: ${mint}`);
+      setStep(4);
     } catch (error) {
       console.error("Transaction error:", error);
       setStatus(`Transaction failed: ${error.message}`);
@@ -106,8 +115,6 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
       setLoading(false);
     }
   };
-
-
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -231,13 +238,12 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
     return "bg-gray-800 text-gray-500 cursor-not-allowed";
   };
 
-
-
   return (
     <div className="min-h-screen text-white font-[Archivo] flex items-center justify-center px-4 mt-6">
       <div
-        className={`w-full max-w-xl bg-[#0A0A0A] border border-[#1C1C1C] p-4 rounded-2xl shadow-lg transition-all duration-500 ${showSuccess ? "border-green-500 shadow-green-500/20" : ""
-          }`}
+        className={`w-full max-w-xl bg-[#0A0A0A] border border-[#1C1C1C] p-4 rounded-2xl shadow-lg transition-all duration-500 ${
+          showSuccess ? "border-green-500 shadow-green-500/20" : ""
+        }`}
       >
         <h2 className="text-[24px] leading-[32px] font-[600] mb-1">
           Create your token
@@ -258,8 +264,9 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
               value={tokenData.name}
               onChange={handleChange}
               disabled={isCreating}
-              className={`w-full bg-[#141414] text-[#C7C3C3] placeholder-[#2E2E2E] rounded-md px-4 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-gray-500 transition-all duration-200 ${isCreating ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+              className={`w-full bg-[#141414] text-[#C7C3C3] placeholder-[#2E2E2E] rounded-md px-4 py-2 text-[14px] focus:outline-none focus:ring-1 focus:ring-gray-500 transition-all duration-200 ${
+                isCreating ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             />
           </div>
           <div>
@@ -273,8 +280,9 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
               value={tokenData.symbol}
               onChange={handleChange}
               disabled={isCreating}
-              className={`w-full bg-[#141414] text-[#C7C3C3] placeholder-[#2E2E2E] rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 transition-all duration-200 ${isCreating ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+              className={`w-full bg-[#141414] text-[#C7C3C3] placeholder-[#2E2E2E] rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 transition-all duration-200 ${
+                isCreating ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             />
           </div>
           <div>
@@ -288,8 +296,9 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
               value={tokenData.decimals}
               onChange={handleChange}
               disabled={isCreating}
-              className={`w-full bg-[#141414] text-[#C7C3C3] placeholder-[#2E2E2E] rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 transition-all duration-200 ${isCreating ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+              className={`w-full bg-[#141414] text-[#C7C3C3] placeholder-[#2E2E2E] rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 transition-all duration-200 ${
+                isCreating ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             />
           </div>
           <div>
@@ -303,8 +312,9 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
               value={tokenData.supply}
               onChange={handleChange}
               disabled={isCreating}
-              className={`w-full bg-[#141414] text-[#C7C3C3] placeholder-[#2E2E2E] rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 transition-all duration-200 ${isCreating ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+              className={`w-full bg-[#141414] text-[#C7C3C3] placeholder-[#2E2E2E] rounded-md px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-500 transition-all duration-200 ${
+                isCreating ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             />
           </div>
         </div>
@@ -319,8 +329,9 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
             value={tokenData.description}
             onChange={handleChange}
             disabled={isCreating}
-            className={`w-full bg-[#141414] text-[#C7C3C3] placeholder-[#2E2E2E] rounded-md px-4 py-2 text-sm h-24 resize-none focus:outline-none focus:ring-1 focus:ring-gray-500 transition-all duration-200 ${isCreating ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+            className={`w-full bg-[#141414] text-[#C7C3C3] placeholder-[#2E2E2E] rounded-md px-4 py-2 text-sm h-24 resize-none focus:outline-none focus:ring-1 focus:ring-gray-500 transition-all duration-200 ${
+              isCreating ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           />
         </div>
 
@@ -329,8 +340,9 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
             Token logo
           </label>
           <div
-            className={`flex items-center justify-center w-full h-32 bg-[#141414] text-[#2E2E2E] border border-dashed border-gray-600 rounded-md text-sm text-gray-400 transition-all duration-200 ${isCreating ? "opacity-50" : ""
-              }`}
+            className={`flex items-center justify-center w-full h-32 bg-[#141414] text-[#2E2E2E] border border-dashed border-gray-600 rounded-md text-sm text-gray-400 transition-all duration-200 ${
+              isCreating ? "opacity-50" : ""
+            }`}
           >
             <input
               type="file"
@@ -342,8 +354,9 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
             />
             <label
               htmlFor="token-logo"
-              className={`text-center ${isCreating ? "cursor-not-allowed" : "cursor-pointer"
-                }`}
+              className={`text-center ${
+                isCreating ? "cursor-not-allowed" : "cursor-pointer"
+              }`}
             >
               {tokenData.logo ? (
                 <p>{tokenData.logo.name}</p>
@@ -384,8 +397,9 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
                   className="sr-only peer"
                 />
                 <div
-                  className={`relative w-12 h-6 bg-[#141414] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#141414] dark:peer-focus:ring-[#141414] rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-[#0A0A0A] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[#0A0A0A] after:border-[#0A0A0A] after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#00A885] dark:peer-checked:bg-[#00A885] ${isCreating ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                  className={`relative w-12 h-6 bg-[#141414] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#141414] dark:peer-focus:ring-[#141414] rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-[#0A0A0A] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[#0A0A0A] after:border-[#0A0A0A] after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#00A885] dark:peer-checked:bg-[#00A885] ${
+                    isCreating ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 ></div>
               </label>
             </div>
@@ -414,8 +428,9 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
                     className="sr-only peer"
                   />
                   <div
-                    className={`relative w-12 h-6 bg-[#141414] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#141414] dark:peer-focus:ring-[#141414] rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-[#0A0A0A] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[#0A0A0A] after:border-[#0A0A0A] after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#00A885] dark:peer-checked:bg-[#00A885] ${isCreating ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
+                    className={`relative w-12 h-6 bg-[#141414] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#141414] dark:peer-focus:ring-[#141414] rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-[#0A0A0A] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[#0A0A0A] after:border-[#0A0A0A] after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#00A885] dark:peer-checked:bg-[#00A885] ${
+                      isCreating ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   ></div>
                 </label>
                 <span className="text-[12px] text-[#4A4A4A]">Fee: 0.1 SOL</span>
@@ -442,8 +457,9 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
                     className="sr-only peer"
                   />
                   <div
-                    className={`relative w-12 h-6 bg-[#141414] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#141414] dark:peer-focus:ring-[#141414] rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-[#0A0A0A] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[#0A0A0A] after:border-[#0A0A0A] after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#00A885] dark:peer-checked:bg-[#00A885] ${isCreating ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
+                    className={`relative w-12 h-6 bg-[#141414] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#141414] dark:peer-focus:ring-[#141414] rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-[#0A0A0A] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[#0A0A0A] after:border-[#0A0A0A] after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#00A885] dark:peer-checked:bg-[#00A885] ${
+                      isCreating ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   ></div>
                 </label>
                 <span className="text-[12px] text-[#4A4A4A]">Fee: 0.1 SOL</span>
@@ -461,14 +477,12 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
 
         <button
           disabled={!isFormValid || isCreating}
-          // onClick={handleButtonClick}
-          className={`w-full py-3 rounded-md mt-4 transition-all duration-300 font-medium ${getButtonStyles()}`}
-          // disabled={!isFormValid}
-          onClick={isSolana ? handleMint : handleButtonClick}
-          // className={`w - full py - 3 rounded - md mt - 4 transition - colors duration - 200 ${isFormValid
-          //   ? "bg-[#2D0101] hover:bg-[#2D0101] text-white cursor-pointer"
-          //   : "bg-gray-800 text-gray-500 cursor-not-allowed"
-          //   }`}
+          onClick={isConnected ? handleMint : handleButtonClick}
+          className={`w - full py - 3 rounded - md mt - 4 transition - colors duration - 200 ${
+            isFormValid
+              ? "bg-[#2D0101] hover:bg-[#2D0101] text-white cursor-pointer"
+              : "bg-gray-800 text-gray-500 cursor-not-allowed"
+          }`}
         >
           {getButtonContent()}
         </button>
