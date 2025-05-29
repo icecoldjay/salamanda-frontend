@@ -461,14 +461,14 @@ const CreateTokenForm = ({ onNext, onCreateToken }) => {
 
         <button
           disabled={!isFormValid || isCreating}
-          onClick={handleButtonClick}
+          // onClick={handleButtonClick}
           className={`w-full py-3 rounded-md mt-4 transition-all duration-300 font-medium ${getButtonStyles()}`}
-          disabled={!isFormValid}
+          // disabled={!isFormValid}
           onClick={isSolana ? handleMint : handleButtonClick}
-          className={`w - full py - 3 rounded - md mt - 4 transition - colors duration - 200 ${isFormValid
-            ? "bg-[#2D0101] hover:bg-[#2D0101] text-white cursor-pointer"
-            : "bg-gray-800 text-gray-500 cursor-not-allowed"
-            }`}
+          // className={`w - full py - 3 rounded - md mt - 4 transition - colors duration - 200 ${isFormValid
+          //   ? "bg-[#2D0101] hover:bg-[#2D0101] text-white cursor-pointer"
+          //   : "bg-gray-800 text-gray-500 cursor-not-allowed"
+          //   }`}
         >
           {getButtonContent()}
         </button>
