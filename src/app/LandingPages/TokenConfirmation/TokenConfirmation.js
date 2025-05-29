@@ -4,6 +4,7 @@ import React from "react";
 import { useTokenCreation } from "../../context/tokenCreationContext";
 import { useNetwork } from "../../context/networkContext";
 
+// Solana devnet link: https://explorer.solana.com/address/$%7Bmint%7D?cluster=devnet
 const TokenConfirmation = ({ onRestart }) => {
   const { createdToken } = useTokenCreation();
   const { selectedNetwork } = useNetwork();

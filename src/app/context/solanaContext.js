@@ -93,7 +93,7 @@ export function SolanaProvider({ children }) {
         supportedWallets: Object.values(SOLANA_WALLETS),
         signTransaction: wallet?.signTransaction?.bind(wallet),
         signAllTransactions: wallet?.signAllTransactions?.bind(wallet),
-        sendTransaction: wallet?.sendTransaction?.bind(wallet)
+        sendTransaction: wallet?.signAndSendTransaction?.bind(wallet),
       }}
     >
       {children}

@@ -72,6 +72,7 @@ const StepperForm = () => {
         <CreateTokenForm
           onNext={handleCreateTokenNext}
           onCreateToken={handleCreateToken}
+          setStep={setStep}
         />
       )}
       {step === 2 && (

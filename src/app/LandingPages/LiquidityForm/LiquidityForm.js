@@ -15,6 +15,7 @@ import coinLogo from "../../images/bnb.png";
 import { RPC_URLS } from "../../../constants/rpcUrls";
 import { liquidityManagerAbi } from "../../../constants/liquidityManagerAbi";
 import { LIQUIDITY_MANAGER_ADDRESSES } from "../../../constants/addresses";
+import { Transaction } from "@solana/web3.js";
 
 export const CHAIN_TYPES = {
   EVM: "evm",
@@ -34,11 +35,8 @@ export default function LiquidityForm() {
   const { address: evmAddress, isConnected: isEvmConnected } = useEvm();
   const { publicKey, isConnected, signTransaction, sendTransaction } =
     useSolana();
-  const { baseAmount, setBaseAmount } = useState("");
-  const { quoteAmount, setQuoteAmount } = useState("");
 
-
-  console.log(isConnected)
+  console.log(isConnected);
   // Wagmi hooks for contract interaction
   const {
     writeContract,
@@ -61,6 +59,18 @@ export default function LiquidityForm() {
 
   // Get the active chain type based on selected network
   const activeChain = selectedNetwork.type;
+  const isWalletConnected =
+    activeChain === CHAIN_TYPES.EVM ? isEvmConnected : isConnected;
+
+  console.log("Wallet Debug:", {
+    activeChain,
+    isEvmConnected,
+    isConnected,
+    isWalletConnected,
+    evmAddress,
+    publicKey: publicKey,
+    selectedNetworkType: selectedNetwork.type,
+  });
 
   const [tokenAddress, setTokenAddress] = useState("");
   const [tokenAmount, setTokenAmount] = useState("");
@@ -378,50 +388,57 @@ export default function LiquidityForm() {
 
   const intializePoolSolana = async () => {
     if (!publicKey) {
-      setStatus('Connect your wallet first');
+      setStatus("Connect your wallet first");
       return;
     }
 
     try {
       setLoading(true);
-      setStatus('Preparing transaction...');
+      setStatus("Preparing transaction...");
 
-      const res = await fetch('http://localhost:5000/createPool', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("http://localhost:5000/createPool", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mintAddress: tokenAddress,
-          poolAllocation: [4000000, 1],
-          owner: publicKey.toBase58()
-
+          poolAllocation: [tokenAmount, ethAmount],
+          owner: publicKey,
         }),
       });
 
       const { instruct, extInfo } = await res.json();
-      console.log('Transaction instruction:', instruct);
-      console.log('Extended info:', extInfo);
+      console.log("Transaction instruction:", instruct);
+      console.log("Extended info:", extInfo);
 
       if (!instruct) {
-        setStatus('No transaction returned');
+        setStatus("No transaction returned");
         setLoading(false);
         return;
       }
 
-      const recoveredTx = Transaction.from(Buffer.from(instruct, 'base64'));
+      const recoveredTx = Transaction.from(Buffer.from(instruct, "base64"));
 
-      setStatus('Sending...');
-      const signature = await sendTransaction(recoveredTx, connection);
+      setStatus("Sending...");
+      const signature = await sendTransaction(recoveredTx);
 
       setStatus(`Transaction sent! Signature: ${signature}`);
-      console.log("extinfo", extInfo)
+      console.log("extinfo", extInfo);
     } catch (error) {
       console.error(error);
       setStatus(`Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
+  // 3. Create a unified handler function (add this around line 200, before validateInputs)
+  const handleAddLiquidity = () => {
+    if (activeChain === CHAIN_TYPES.SOLANA && isConnected) {
+      intializePoolSolana();
+    } else if (activeChain === CHAIN_TYPES.EVM && isEvmConnected) {
+      addLiquidity();
+    }
+  };
 
   const handleCreateAnother = () => {
     setTxStatus({
@@ -651,28 +668,15 @@ export default function LiquidityForm() {
 
       {/* Submit Button */}
       <button
-        //onClick={initializePool}
-        disabled={txStatus.loading || !baseAmount || !quoteAmount}
-        className={`w-full ${txStatus.loading
-          ? "bg-gray-600 cursor-not-allowed"
-          : "bg-red-900 hover:bg-red-800"
-          } text-white py-3 rounded-lg mt-4 transition-colors`}
-        onClick={isConnected ? intializePoolSolana : addLiquidity}
+        onClick={handleAddLiquidity}
         disabled={
-          txStatus.loading ||
-          !tokenAmount ||
-          !ethAmount ||
-          !tokenDetails.loaded ||
-          !isEvmConnected
+          txStatus.loading || !tokenAmount || !ethAmount || !isWalletConnected //
         }
-        className={`w-full ${txStatus.loading ||
-          !tokenAmount ||
-          !ethAmount ||
-          !tokenDetails.loaded ||
-          !isEvmConnected
-          ? "bg-gray-600 cursor-not-allowed"
-          : "bg-red-900 hover:bg-red-800"
-          } text-white py-3 rounded-lg mt-4 transition-colors`}
+        className={`w-full ${
+          txStatus.loading || !tokenAmount || !ethAmount || !isWalletConnected
+            ? "bg-gray-600 cursor-not-allowed"
+            : "bg-red-900 hover:bg-red-800"
+        } text-white py-3 rounded-lg mt-4 transition-colors`}
       >
         {txStatus.loading ? (
           <span className="flex items-center justify-center gap-2">
@@ -692,9 +696,10 @@ export default function LiquidityForm() {
       )}
 
       {/* Wallet Connection Status */}
-      {!isEvmConnected && (
+      {!isWalletConnected && (
         <div className="text-yellow-500 text-sm mt-2 p-2 bg-yellow-900/20 rounded-lg">
-          Connect your wallet to add liquidity
+          Connect your {activeChain === CHAIN_TYPES.EVM ? "EVM" : "Solana"}{" "}
+          wallet to add liquidity
         </div>
       )}
     </div>
