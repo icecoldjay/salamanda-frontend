@@ -3,7 +3,12 @@ import { useState, useEffect } from "react";
 import { useNetwork } from "../../context/networkContext";
 import { useEvm } from "../../context/evmContext";
 import { useSolana } from "../../context/solanaContext";
+import { fetchMetadataFromSeeds } from '@metaplex-foundation/mpl-token-metadata';
+import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
+import { publicKey as umiPublicKey } from '@metaplex-foundation/umi';
+const umi = createUmi('https://api.devnet.solana.com');
 import { Buffer } from "buffer";
+import { getAccount, getMint, getAssociatedTokenAddress } from "@solana/spl-token";
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -15,7 +20,7 @@ import coinLogo from "../../images/bnb.png";
 import { RPC_URLS } from "../../../constants/rpcUrls";
 import { liquidityManagerAbi } from "../../../constants/liquidityManagerAbi";
 import { LIQUIDITY_MANAGER_ADDRESSES } from "../../../constants/addresses";
-import { Transaction } from "@solana/web3.js";
+import { Transaction, Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
 
 export const CHAIN_TYPES = {
   EVM: "evm",
@@ -184,7 +189,7 @@ export default function LiquidityForm() {
       fetchTokenDetails(tokenAddress);
     } else {
       setTokenDetails({
-        decimals: 18,
+        decimals: 181,
         symbol: "",
         name: "",
         balance: "0",
@@ -193,6 +198,84 @@ export default function LiquidityForm() {
       });
     }
   }, [tokenAddress, isEvmConnected, evmAddress]);
+
+  //solana fetch token details
+  useEffect(() => {
+    if (activeChain === CHAIN_TYPES.SOLANA && isConnected) {
+      getTokenBalanceSpl(tokenAddress, publicKey);
+    } else {
+      setTokenDetails({
+        decimals: 9,
+        symbol: "",
+        name: "",
+        balance: "0",
+        loaded: false,
+        loading: false,
+      });
+    }
+  }, [isConnected, tokenAddress, publicKey]);
+
+
+  //solana process
+
+  // get ATA
+
+
+  const getTokenBalanceSpl = async (mintaddress, mypublicKey) => {
+    try {
+      const WALLET = new PublicKey(mypublicKey) // e.g., E645TckHQnDcavVv92Etc6xSWQaq8zzPtPRGBheviRAk
+      const MINT = new PublicKey(mintaddress);    // e.g., EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+      const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+      const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+
+      const [address] = PublicKey.findProgramAddressSync(
+        [WALLET.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), MINT.toBuffer()],
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+      const tokenAccount = address;
+      const connection = new Connection(clusterApiUrl('devnet'));
+
+      const info = await getAccount(connection, tokenAccount);
+      const amount = Number(info.amount);
+      const mint = await getMint(connection, info.mint);
+      const balance = amount / (10 ** mint.decimals);
+      //console.log('Balance:', balance, "mint:", info);
+
+      const metadata = await fetchMetadataFromSeeds(umi, {
+        mint: umiPublicKey(mintaddress),
+      });
+
+      console.log(metadata.name);   // MyToken
+      console.log(metadata.symbol); // MTK
+      console.log(balance)
+
+      setTokenDetails({
+        decimals: Number(mint.decimals),
+        symbol: metadata.symbol,
+        name: metadata.name,
+        balance: balance,
+        loaded: true,
+        loading: false,
+      });
+      return { balance, name: metadata.name, symbol: metadata.symbol };
+
+    } catch (error) {
+      console.log(error);
+      setTokenDetails({
+        decimals: 18,
+        symbol: "TOKEN",
+        name: "Unknown Token",
+        balance: "0",
+        loaded: true,
+        loading: false,
+      });
+      setTxStatus((prev) => ({
+        ...prev,
+        error: `Could not fetch token details: ${error.message}`,
+      }));
+    }
+  }
+
 
   const fetchTokenDetails = async (address) => {
     try {
@@ -393,8 +476,13 @@ export default function LiquidityForm() {
     }
 
     try {
-      setLoading(true);
-      setStatus("Preparing transaction...");
+      //setLoading(true);
+      setTxStatus((prev) => ({
+        ...prev,
+        loading: true,
+        message: "Preparing to add liquidity...",
+        transactionStep: "preparing",
+      }));
 
       const res = await fetch("http://localhost:5000/createPool", {
         method: "POST",
@@ -412,7 +500,12 @@ export default function LiquidityForm() {
 
       if (!instruct) {
         setStatus("No transaction returned");
-        setLoading(false);
+        setTxStatus((prev) => ({
+          ...prev,
+          loading: false,
+          message: "error",
+          transactionStep: null
+        }));
         return;
       }
 
@@ -421,13 +514,44 @@ export default function LiquidityForm() {
       setStatus("Sending...");
       const signature = await sendTransaction(recoveredTx);
 
+      if (!signature) {
+        if (!instruct) {
+          setStatus("No transaction returned");
+          setTxStatus((prev) => ({
+            ...prev,
+            loading: false,
+            message: "error, processing transaction",
+            transactionStep: null
+          }));
+          return;
+        }
+      }
+      //modal confirmation
+      setTxStatus({
+        loading: false,
+        error: null,
+        success: true,
+        pairAddress: null,
+        liquidityAmount: null,
+        hash: null,
+        message: "",
+      });
+
+
       setStatus(`Transaction sent! Signature: ${signature}`);
       console.log("extinfo", extInfo);
     } catch (error) {
       console.error(error);
-      setStatus(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
+      setTxStatus({
+        loading: false,
+        error: error.message || "Failed to create position",
+        success: false,
+        transactionStep: null,
+        pairAddress: null,
+        liquidityAmount: null,
+        hash: null,
+        message: "",
+      })
     }
   };
 
@@ -601,18 +725,18 @@ export default function LiquidityForm() {
       {/* ETH Amount */}
       <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg space-y-2">
         <div className="flex justify-between items-center p-2">
-          <span className="text-sm">ETH amount</span>
+          <span className="text-sm">{selectedNetwork.name} amount</span>
         </div>
         <div className="flex items-center justify-between w-full bg-[#141414] rounded px-4 py-3">
           <div className="flex items-center gap-2">
             <Image
-              src={coinLogo}
-              alt="ETH"
+              src={selectedNetwork.icon}
+              alt={selectedNetwork.name}
               width={24}
               height={24}
               className="w-6 h-6 rounded-full"
             />
-            <span>ETH</span>
+            <span>{selectedNetwork.name}</span>
           </div>
           <input
             type="text"
@@ -672,11 +796,10 @@ export default function LiquidityForm() {
         disabled={
           txStatus.loading || !tokenAmount || !ethAmount || !isWalletConnected //
         }
-        className={`w-full ${
-          txStatus.loading || !tokenAmount || !ethAmount || !isWalletConnected
-            ? "bg-gray-600 cursor-not-allowed"
-            : "bg-red-900 hover:bg-red-800"
-        } text-white py-3 rounded-lg mt-4 transition-colors`}
+        className={`w-full ${txStatus.loading || !tokenAmount || !ethAmount || !isWalletConnected
+          ? "bg-gray-600 cursor-not-allowed"
+          : "bg-red-900 hover:bg-red-800"
+          } text-white py-3 rounded-lg mt-4 transition-colors`}
       >
         {txStatus.loading ? (
           <span className="flex items-center justify-center gap-2">
