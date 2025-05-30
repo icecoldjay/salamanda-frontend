@@ -257,6 +257,10 @@ export default function LiquidityForm() {
         loaded: true,
         loading: false,
       });
+      setTxStatus((prev) => ({
+        ...prev,
+        error: null,
+      }));
       return { balance, name: metadata.name, symbol: metadata.symbol };
 
     } catch (error) {
