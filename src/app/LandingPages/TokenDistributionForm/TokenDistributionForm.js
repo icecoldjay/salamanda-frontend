@@ -431,7 +431,7 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
 
   return (
     <div className="min-h-screen text-white font-[Archivo]  flex items-center justify-center px-4 mt-6">
-      <div className="w-full max-w-2xl bg-[#0A0A0A] border border-[#1C1C1C] p-4 rounded-2xl shadow-lg">
+      <div className="w-full max-w-xl bg-[#0A0A0A] border border-[#1C1C1C] p-4 rounded-2xl shadow-lg">
         <div className="flex gap-2 items-center mb-4">
           <HiOutlineChevronLeft size={16} />
           <button onClick={onBack} className="text-[14px] text-gray-400">
@@ -547,36 +547,10 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
                 Eth Amount
               </p>
               <input
-                type="number"
+                type="text"
                 min="1"
                 max="10"
-                value={distributionData.walletCount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Set typing flag to prevent wallet generation
-                  setIsTyping(true);
-
-                  // Only update state if the value is valid
-                  if (
-                    value === "" ||
-                    (!isNaN(value) && Number(value) >= 1 && Number(value) <= 10)
-                  ) {
-                    updateDistributionData({ walletCount: value });
-                  }
-                }}
-                onBlur={(e) => {
-                  // Final validation on blur
-                  let value = parseInt(e.target.value);
-                  if (isNaN(value) || value < 1) value = 1;
-                  if (value > 10) value = 10;
-
-                  // Update the value
-                  updateDistributionData({ walletCount: value });
-
-                  // Clear typing flag to allow wallet generation
-                  setIsTyping(false);
-                }}
-                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-4 py-2 text-sm placeholder-gray-500"
+                className="w-full bg-[#141414] rounded-md px-4 py-2 text-sm placeholder-gray-500"
               />
             </div>
             <div className="mb-6">
@@ -584,7 +558,7 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
                 Number of wallets
               </p>
               <input
-                type="number"
+                type="text"
                 min="1"
                 max="10"
                 value={distributionData.walletCount}
@@ -613,7 +587,7 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
                   // Clear typing flag to allow wallet generation
                   setIsTyping(false);
                 }}
-                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-4 py-2 text-sm placeholder-gray-500"
+                className="w-full bg-[#141414] rounded-md px-4 py-2 text-sm placeholder-gray-500"
               />
             </div>
 

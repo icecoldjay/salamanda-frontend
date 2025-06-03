@@ -3,6 +3,7 @@
 import React from "react";
 import { useTokenCreation } from "../../context/tokenCreationContext";
 import { useNetwork } from "../../context/networkContext";
+import Header from "../Headers/Header";
 
 // Solana devnet link: https://explorer.solana.com/address/$%7Bmint%7D?cluster=devnet
 const TokenConfirmation = ({ onRestart }) => {
@@ -33,7 +34,8 @@ const TokenConfirmation = ({ onRestart }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+    <div className="mx-auto">
+    {/* <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"> */}
       <div className="flex flex-col items-center space-y-6 bg-[#0A0A0A] text-white rounded-2xl p-6 w-full max-w-md border border-[#1C1C1C] font-[Archivo]">
         <div className="bg-red-600 w-32 h-32 rounded-full flex items-center justify-center">
           <svg
@@ -52,8 +54,8 @@ const TokenConfirmation = ({ onRestart }) => {
         </div>
 
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Token created</h2>
-          <p className="text-gray-400">
+          <h2 className="text-2xl font-bold mb-2 text-white">Token created</h2>
+          <p className="text-[#C7C3C3] text-[14px]">
             You have created your token successfully
           </p>
         </div>
@@ -62,23 +64,23 @@ const TokenConfirmation = ({ onRestart }) => {
           <div className="w-full max-w-md bg-[#1a1a1a] p-4 rounded-lg">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-gray-400 text-sm">Name</p>
-                <p className="font-medium">{createdToken.name}</p>
+                <p className="text-[#C7C3C3] text-[14px]">Name</p>
+                <p className="font-medium text-white">{createdToken.name}</p>
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Symbol</p>
-                <p className="font-medium">{createdToken.symbol}</p>
+                <p className="text-[#C7C3C3] text-[14px]">Symbol</p>
+                <p className="font-medium text-white">{createdToken.symbol}</p>
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Supply</p>
-                <p className="font-medium">{createdToken.supply}</p>
+                <p className="text-[#C7C3C3] text-[14px]">Supply</p>
+                <p className="font-medium text-white">{createdToken.supply}</p>
               </div>
               <div>
-                <p className="text-gray-400 text-sm">Decimals</p>
-                <p className="font-medium">{createdToken.decimals}</p>
+                <p className="text-[#C7C3C3] text-[14px]">Decimals</p>
+                <p className="font-medium text-white">{createdToken.decimals}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-gray-400 text-sm">Address</p>
+                <p className="text-[#C7C3C3] text-[14px]">Address</p>
                 <p className="font-medium truncate">{createdToken.address}</p>
               </div>
             </div>
@@ -106,6 +108,7 @@ const TokenConfirmation = ({ onRestart }) => {
           Create a new token
         </button>
       </div>
+    {/* </div> */}
     </div>
   );
 };

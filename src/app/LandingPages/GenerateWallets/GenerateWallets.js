@@ -148,14 +148,14 @@ const GenerateWallets = ({ onBack, onNext, networkType }) => {
             <button
               onClick={handleDownloadWalletInfo}
               disabled={wallets.length === 0}
-              className={`w-1/2 flex items-center justify-left gap-4 font-[600] text-[14px] text-white border border-gray-700 rounded-md px-3 py-3 text-sm ${
+              className={`sm:w-full lg:w-1/2  flex items-center justify-left gap-4 font-[600] text-[14px] text-white border border-gray-700 rounded-md px-3 py-3 text-sm ${
                 wallets.length > 0
                   ? "bg-[#141414] hover:bg-[#1a1a1a] cursor-pointer"
                   : "bg-gray-800 cursor-not-allowed opacity-50"
               }`}
             >
               <HiDownload size={20} />
-              <span>Download wallet information</span>
+              <span className="">Download wallet information</span>
             </button>
           </div>
 

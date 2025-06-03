@@ -600,31 +600,31 @@ export default function LiquidityForm() {
 
         <div className="bg-[#0A0A0A] border border-[#1C1C1C] rounded-lg p-4 space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-400">Network:</span>
+            <span className="text-[#C7C3C3]">Network:</span>
             <span>{selectedNetwork.name}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Token Pair:</span>
+            <span className="text-[#C7C3C3]">Token Pair:</span>
             <span>{tokenDetails.symbol}/ETH</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Amounts:</span>
+            <span className="text-[#C7C3C3]">Amounts:</span>
             <span>
               {tokenAmount} {tokenDetails.symbol} + {ethAmount} ETH
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Lock Duration:</span>
+            <span className="text-[#C7C3C3]">Lock Duration:</span>
             <span>
               {lockDuration === "0" ? "No lock" : `${lockDuration} days`}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Slippage:</span>
+            <span className="text-[#C7C3C3]">Slippage:</span>
             <span>{slippageTolerance}%</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Transaction:</span>
+            <span className="text-[#C7C3C3]">Transaction:</span>
             <a
               href={`${selectedNetwork.blockExplorer}/tx/${txStatus.hash}`}
               target="_blank"
@@ -640,7 +640,7 @@ export default function LiquidityForm() {
         <div className="flex flex-col space-y-3">
           <button
             onClick={handleCreateAnother}
-            className="w-full bg-red-900 hover:bg-red-800 text-white py-3 rounded"
+            className="w-full bg-[#2D0101] hover:bg-red-800 text-white py-3 rounded"
           >
             Create Another Pool
           </button>
@@ -653,10 +653,10 @@ export default function LiquidityForm() {
   }
 
   return (
-    <div className="max-w-md mx-auto bg-black font-[Archivo] text-white p-3 rounded-xl shadow-md space-y-2">
+    <div className="max-w-lg mx-auto bg-[#0a0a0a] border border-[#1c1c1c] font-[Archivo] text-white sm:p-6 p-3 rounded-xl shadow-md space-y-2">
       {/* Network Display */}
-      <div className="flex items-center justify-between mb-2 p-2 bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg">
-        <span className="text-sm text-gray-400">Network:</span>
+      <div className="flex items-center justify-between mb-3 p-2 bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg">
+        <span className="text-[14px] text-[#C7C3C3]">Network:</span>
         <div className="flex items-center gap-2">
           <Image
             src={selectedNetwork.icon}
@@ -665,22 +665,22 @@ export default function LiquidityForm() {
             height={20}
             className="w-5 h-5"
           />
-          <span className="text-sm">{selectedNetwork.name}</span>
+          <span className="text-[14px]">{selectedNetwork.name}</span>
         </div>
       </div>
 
       {/* Token Address Input */}
-      <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg p-4 space-y-2">
-        <label className="block text-sm mb-1">Token Address</label>
+      <div className="space-y-4">
+        <label className="block text-[14px] text-[#C7C3C3] mb-1">Token Address</label>
         <input
           type="text"
           value={tokenAddress}
           onChange={(e) => setTokenAddress(e.target.value)}
           placeholder="0x..."
-          className="w-full bg-[#141414] text-white px-4 py-2 rounded-lg focus:outline-none border border-[#2E2E2E] focus:border-red-500"
+          className="w-full bg-[#141414] text-white px-4 py-2 rounded-lg focus:outline-none focus:border-[#c7c3c3]"
         />
         {tokenDetails.loading && (
-          <p className="text-yellow-500 text-sm">Loading token details...</p>
+          <p className="text-yellow-500 text-[14px]">Loading token details...</p>
         )}
         {tokenDetails.loaded && tokenDetails.symbol && (
           <div className="space-y-1">
@@ -699,18 +699,18 @@ export default function LiquidityForm() {
       {/* Token Amount */}
       <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg space-y-2">
         <div className="flex justify-between items-center p-2">
-          <span className="text-sm">
+          <span className="text-[14px] text-[#C7C3C3]">
             {tokenDetails.symbol || "Token"} amount
           </span>
         </div>
         <div className="flex items-center justify-between w-full bg-[#141414] rounded px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center">
-              <span className="text-xs">
+            <div className="w-6 rounded-full bg-gray-700 flex items-center justify-center">
+              <span className="text-[14px] text-[#C7C3C3]">
                 {tokenDetails.symbol ? tokenDetails.symbol[0] : "T"}
               </span>
             </div>
-            <span>{tokenDetails.symbol || "TOKEN"}</span>
+            <span className="text-[14px]">{tokenDetails.symbol || "TOKEN"}</span>
           </div>
           <input
             type="text"
@@ -729,7 +729,7 @@ export default function LiquidityForm() {
       {/* ETH Amount */}
       <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg space-y-2">
         <div className="flex justify-between items-center p-2">
-          <span className="text-sm">{selectedNetwork.name} amount</span>
+          <span className="text-[14px] text-[#C7C3C3]">{selectedNetwork.name} amount</span>
         </div>
         <div className="flex items-center justify-between w-full bg-[#141414] rounded px-4 py-3">
           <div className="flex items-center gap-2">
@@ -740,7 +740,7 @@ export default function LiquidityForm() {
               height={24}
               className="w-6 h-6 rounded-full"
             />
-            <span>{selectedNetwork.name}</span>
+            <span className="text-[14px]">{selectedNetwork.name}</span>
           </div>
           <input
             type="text"
@@ -755,7 +755,7 @@ export default function LiquidityForm() {
           />
         </div>
         {ethBalance && (
-          <p className="text-gray-400 text-xs px-2 pb-2">
+          <p className="text-[14px] text-[#C7C3C3] px-2 pb-2">
             Balance:{" "}
             {parseFloat(ethers.formatEther(ethBalance.value)).toFixed(6)} ETH
           </p>
@@ -763,8 +763,8 @@ export default function LiquidityForm() {
       </div>
 
       {/* Slippage Tolerance */}
-      <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg p-4 space-y-2">
-        <label className="block text-sm mb-1">Slippage Tolerance (%)</label>
+      <div className="p-2 space-y-2">
+        <label className="block text-[14px] text-[#C7C3C3] mb-1">Slippage Tolerance (%)</label>
         <input
           type="text"
           value={slippageTolerance}
@@ -778,8 +778,8 @@ export default function LiquidityForm() {
       </div>
 
       {/* Lock Duration */}
-      <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg p-4 space-y-2">
-        <label className="block text-sm mb-1">
+      <div className=" rounded-lg p-2 space-y-2">
+        <label className="block text-[14px] text-[#C7C3C3] mb-1">
           Lock Duration (days, 0 = no lock)
         </label>
         <input
@@ -802,7 +802,7 @@ export default function LiquidityForm() {
         }
         className={`w-full ${txStatus.loading || !tokenAmount || !ethAmount || !isWalletConnected
           ? "bg-gray-600 cursor-not-allowed"
-          : "bg-red-900 hover:bg-red-800"
+          : "bg-[#2D0101] hover:bg-[#2D0101]"
           } text-white py-3 rounded-lg mt-4 transition-colors`}
       >
         {txStatus.loading ? (
