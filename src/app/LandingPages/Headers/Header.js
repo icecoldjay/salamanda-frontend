@@ -255,7 +255,8 @@ const Header = () => {
 <nav className="bg-black text-white font-[Archivo] px-6 md:px-[50px] lg:px-[100px] py-4 min-h-[80px] z-50">
       <div className="w-full flex items-center justify-between">
 {/* Hamburger menu button (mobile only) */}
-    <button
+   <div className="flex items-center gap-2">
+     <button
       className="lg:hidden text-white focus:outline-none"
       onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
     >
@@ -279,6 +280,8 @@ const Header = () => {
         <Image src={logo} width={120} alt="logo" priority
         className="w-full sm:w-[120px] lg:w-[250px]"/>
       </div>
+
+   </div>
 
       {/* Center section - Navigation */}
       <div className="hidden lg:flex flex-1 justify-center">
@@ -318,7 +321,7 @@ const Header = () => {
       {/* Right section - Network selector and wallet */}
       <div className="flex items-center gap-3">
         {/* Network Selector */}
-        <div className="hidden lg:flex relative" ref={tokenDropdownRef}>
+        <div className="lg:flex relative" ref={tokenDropdownRef}>
           <button
           onClick={() => setIsTokenDropdownOpen(!isTokenDropdownOpen)}
           className="flex gap-2 items-center w-[120px] px-3 py-2 border border-gray-600 rounded-lg bg-gray-900 hover:bg-gray-800"
@@ -401,7 +404,7 @@ const Header = () => {
     <br/>
 
     {/* Mobile Network Selector */}
-    <div className="block lg:hidden" ref={tokenDropdownRef}>
+    {/* <div className="block lg:hidden" ref={tokenDropdownRef}>
       <button
         onClick={() => setIsTokenDropdownOpen(!isTokenDropdownOpen)}
         className="flex gap-2 items-center w-full px-3 py-2 border border-gray-600 rounded-lg bg-gray-900 hover:bg-gray-800 transition-colors"
@@ -434,7 +437,7 @@ const Header = () => {
           ))}
         </div>
         )}
-    </div>
+    </div> */}
   </div>
 )}
 

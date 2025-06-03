@@ -542,6 +542,43 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
 
         {distributionData.method === "generate" ? (
           <>
+           <div className="mb-6">
+              <p className="font-[Archivo] text-[14px] font-[400] leading-[20px] text-[#c7c3c3] mb-2">
+                Eth Amount
+              </p>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={distributionData.walletCount}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Set typing flag to prevent wallet generation
+                  setIsTyping(true);
+
+                  // Only update state if the value is valid
+                  if (
+                    value === "" ||
+                    (!isNaN(value) && Number(value) >= 1 && Number(value) <= 10)
+                  ) {
+                    updateDistributionData({ walletCount: value });
+                  }
+                }}
+                onBlur={(e) => {
+                  // Final validation on blur
+                  let value = parseInt(e.target.value);
+                  if (isNaN(value) || value < 1) value = 1;
+                  if (value > 10) value = 10;
+
+                  // Update the value
+                  updateDistributionData({ walletCount: value });
+
+                  // Clear typing flag to allow wallet generation
+                  setIsTyping(false);
+                }}
+                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-4 py-2 text-sm placeholder-gray-500"
+              />
+            </div>
             <div className="mb-6">
               <p className="font-[Archivo] text-[14px] font-[400] leading-[20px] text-[#c7c3c3] mb-2">
                 Number of wallets

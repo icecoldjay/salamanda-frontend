@@ -827,7 +827,7 @@ export default function TradeTokens() {
               disabled={!isConnected || !sellToken || !buyToken || !sellAmount}
               className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
                 !isConnected
-                  ? "bg-gradient-to-r from-[#5F0202] to-[#2D0101] text-[#F3B0B0] hover:from-[#7F0303] hover:to-[#3D0202]"
+                  ? "bg-[#5F0202] text-[#F3B0B0] hover:from-[#7F0303] hover:to-[#3D0202]"
                   : !sellToken || !buyToken || !sellAmount
                   ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                   : "bg-gradient-to-r from-[#5F0202] to-[#2D0101] text-[#F3B0B0] hover:from-[#7F0303] hover:to-[#3D0202]"

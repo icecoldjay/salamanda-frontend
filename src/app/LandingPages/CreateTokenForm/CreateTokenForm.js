@@ -239,9 +239,9 @@ const CreateTokenForm = ({ onNext, onCreateToken, setStep }) => {
   };
 
   return (
-    <div className="min-h-screen text-white font-[Archivo] flex items-center justify-center px-4 mt-6">
+    <div className="min-h-screen text-white font-[Archivo] flex items-center justify-center mt-6">
       <div
-        className={`w-full max-w-xl bg-[#0A0A0A] border border-[#1C1C1C] p-4 rounded-2xl shadow-lg transition-all duration-500 ${
+        className={`w-full max-w-xl sm:max-w-2xl bg-[#0A0A0A] border border-[#1C1C1C] p-4 rounded-2xl shadow-lg transition-all duration-500 ${
           showSuccess ? "border-green-500 shadow-green-500/20" : ""
         }`}
       >
@@ -377,7 +377,7 @@ const CreateTokenForm = ({ onNext, onCreateToken, setStep }) => {
 
         {/* Bundle Launch Toggle - Always visible and independent of network */}
         <div className="mb-4">
-          <div className="flex items-center justify-between">
+          <div className="w-full flex items-center justify-between pr-[9px]">
             <div>
               <p className="text-[14px] leading-[20px] font-[600]">
                 Bundle Launch
@@ -386,7 +386,7 @@ const CreateTokenForm = ({ onNext, onCreateToken, setStep }) => {
                 Skip distribution setup and create token directly
               </p>
             </div>
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center">
               <label className="inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
@@ -478,7 +478,7 @@ const CreateTokenForm = ({ onNext, onCreateToken, setStep }) => {
         <button
           disabled={!isFormValid || isCreating}
           onClick={isConnected ? handleMint : handleButtonClick}
-          className={`w - full py - 3 rounded - md mt - 4 transition - colors duration - 200 ${
+          className={`w-full py-3 rounded-md mt-4 transition-colors duration-200 ${
             isFormValid
               ? "bg-[#2D0101] hover:bg-[#2D0101] text-white cursor-pointer"
               : "bg-gray-800 text-gray-500 cursor-not-allowed"

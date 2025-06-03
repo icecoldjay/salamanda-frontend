@@ -5,7 +5,7 @@ import TrustedDev from './TrustedDev/TrustedDev'
 
 const LandingPage = () => {
   return (
-    <div>
+    <div className='bg-[#0f0f0f]'>
         <Header/>
         <HeroSection/>
         {/* <TrustedDev/> */}

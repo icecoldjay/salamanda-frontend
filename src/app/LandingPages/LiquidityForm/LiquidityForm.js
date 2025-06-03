@@ -587,7 +587,7 @@ export default function LiquidityForm() {
 
   if (txStatus.success) {
     return (
-      <div className="max-w-md mx-auto bg-black font-[Archivo] text-white p-6 rounded-xl shadow-md space-y-4">
+      <div className="max-w-md bg-black mx-auto font-[Archivo] text-white p-6 rounded-xl shadow-md space-y-4">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">
             Pool Created Successfully!
@@ -598,7 +598,7 @@ export default function LiquidityForm() {
           </p>
         </div>
 
-        <div className="bg-[#141414] rounded-lg p-4 space-y-3">
+        <div className="bg-[#0A0A0A] border border-[#1C1C1C] rounded-lg p-4 space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-400">Network:</span>
             <span>{selectedNetwork.name}</span>
