@@ -3,12 +3,15 @@ import { useState, useEffect } from "react";
 import { useNetwork } from "../../context/networkContext";
 import { useEvm } from "../../context/evmContext";
 import { useSolana } from "../../context/solanaContext";
-import { fetchMetadataFromSeeds } from '@metaplex-foundation/mpl-token-metadata';
-import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
-import { publicKey as umiPublicKey } from '@metaplex-foundation/umi';
-const umi = createUmi('https://api.devnet.solana.com');
+import { fetchMetadataFromSeeds } from "@metaplex-foundation/mpl-token-metadata";
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+import { publicKey as umiPublicKey } from "@metaplex-foundation/umi";
 import { Buffer } from "buffer";
-import { getAccount, getMint, getAssociatedTokenAddress } from "@solana/spl-token";
+import {
+  getAccount,
+  getMint,
+  getAssociatedTokenAddress,
+} from "@solana/spl-token";
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -20,12 +23,19 @@ import coinLogo from "../../images/bnb.png";
 import { RPC_URLS } from "../../../constants/rpcUrls";
 import { liquidityManagerAbi } from "../../../constants/liquidityManagerAbi";
 import { LIQUIDITY_MANAGER_ADDRESSES } from "../../../constants/addresses";
-import { Transaction, Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
+import {
+  Transaction,
+  Connection,
+  PublicKey,
+  clusterApiUrl,
+} from "@solana/web3.js";
 
 export const CHAIN_TYPES = {
   EVM: "evm",
   SOLANA: "solana",
 };
+
+const umi = createUmi("https://api.devnet.solana.com");
 
 // Token ABI for fetching token details and balance
 const tokenAbi = [
@@ -41,7 +51,6 @@ export default function LiquidityForm() {
   const { publicKey, isConnected, signTransaction, sendTransaction } =
     useSolana();
 
-  console.log(isConnected);
   // Wagmi hooks for contract interaction
   const {
     writeContract,
@@ -183,29 +192,22 @@ export default function LiquidityForm() {
     }
   }, [isPending, isConfirming, isConfirmed, txReceipt, txHash, writeError]);
 
-  // Fetch token details when address changes
-  useEffect(() => {
-    if (tokenAddress && ethers.isAddress(tokenAddress) && isEvmConnected) {
-      fetchTokenDetails(tokenAddress);
-    } else {
-      setTokenDetails({
-        decimals: 181,
-        symbol: "",
-        name: "",
-        balance: "0",
-        loaded: false,
-        loading: false,
-      });
-    }
-  }, [tokenAddress, isEvmConnected, evmAddress]);
-
-  //solana fetch token details
+  // Fetch token details solana/EVM
   useEffect(() => {
     if (activeChain === CHAIN_TYPES.SOLANA && isConnected) {
+      // Solana logic
       getTokenBalanceSpl(tokenAddress, publicKey);
+    } else if (
+      tokenAddress &&
+      ethers.isAddress(tokenAddress) &&
+      isEvmConnected
+    ) {
+      // EVM logic
+      fetchTokenDetails(tokenAddress);
     } else {
+      // Default state with appropriate decimals based on chain
       setTokenDetails({
-        decimals: 9,
+        decimals: activeChain === CHAIN_TYPES.SOLANA ? 9 : 18,
         symbol: "",
         name: "",
         balance: "0",
@@ -213,41 +215,46 @@ export default function LiquidityForm() {
         loading: false,
       });
     }
-  }, [isConnected, tokenAddress, publicKey]);
-
-
-  //solana process
-
-  // get ATA
-
+  }, [
+    tokenAddress,
+    isEvmConnected,
+    evmAddress,
+    activeChain,
+    isConnected,
+    publicKey,
+  ]);
 
   const getTokenBalanceSpl = async (mintaddress, mypublicKey) => {
     try {
-      const WALLET = new PublicKey(mypublicKey) // e.g., E645TckHQnDcavVv92Etc6xSWQaq8zzPtPRGBheviRAk
-      const MINT = new PublicKey(mintaddress);    // e.g., EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
-      const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-      const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+      const WALLET = new PublicKey(mypublicKey); // e.g., E645TckHQnDcavVv92Etc6xSWQaq8zzPtPRGBheviRAk
+      const MINT = new PublicKey(mintaddress); // e.g., EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+      const TOKEN_PROGRAM_ID = new PublicKey(
+        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+      );
+      const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+      );
 
       const [address] = PublicKey.findProgramAddressSync(
         [WALLET.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), MINT.toBuffer()],
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
       const tokenAccount = address;
-      const connection = new Connection(clusterApiUrl('devnet'));
+      const connection = new Connection(clusterApiUrl("devnet"));
 
       const info = await getAccount(connection, tokenAccount);
       const amount = Number(info.amount);
       const mint = await getMint(connection, info.mint);
-      const balance = amount / (10 ** mint.decimals);
+      const balance = amount / 10 ** mint.decimals;
       //console.log('Balance:', balance, "mint:", info);
 
       const metadata = await fetchMetadataFromSeeds(umi, {
         mint: umiPublicKey(mintaddress),
       });
 
-      console.log(metadata.name);   // MyToken
+      console.log(metadata.name); // MyToken
       console.log(metadata.symbol); // MTK
-      console.log(balance)
+      console.log(balance);
 
       setTokenDetails({
         decimals: Number(mint.decimals),
@@ -262,7 +269,6 @@ export default function LiquidityForm() {
         error: null,
       }));
       return { balance, name: metadata.name, symbol: metadata.symbol };
-
     } catch (error) {
       console.log(error);
       setTokenDetails({
@@ -278,8 +284,7 @@ export default function LiquidityForm() {
         error: `Could not fetch token details: ${error.message}`,
       }));
     }
-  }
-
+  };
 
   const fetchTokenDetails = async (address) => {
     try {
@@ -508,7 +513,7 @@ export default function LiquidityForm() {
           ...prev,
           loading: false,
           message: "error",
-          transactionStep: null
+          transactionStep: null,
         }));
         return;
       }
@@ -525,22 +530,22 @@ export default function LiquidityForm() {
             ...prev,
             loading: false,
             message: "error, processing transaction",
-            transactionStep: null
+            transactionStep: null,
           }));
           return;
         }
       }
-      //modal confirmation
+
+      console.log(signature);
       setTxStatus({
         loading: false,
         error: null,
         success: true,
         pairAddress: null,
         liquidityAmount: null,
-        hash: null,
+        hash: signature.signature,
         message: "",
       });
-
 
       setStatus(`Transaction sent! Signature: ${signature}`);
       console.log("extinfo", extInfo);
@@ -555,11 +560,10 @@ export default function LiquidityForm() {
         liquidityAmount: null,
         hash: null,
         message: "",
-      })
+      });
     }
   };
 
-  // 3. Create a unified handler function (add this around line 200, before validateInputs)
   const handleAddLiquidity = () => {
     if (activeChain === CHAIN_TYPES.SOLANA && isConnected) {
       intializePoolSolana();
@@ -671,7 +675,9 @@ export default function LiquidityForm() {
 
       {/* Token Address Input */}
       <div className="space-y-4">
-        <label className="block text-[14px] text-[#C7C3C3] mb-1">Token Address</label>
+        <label className="block text-[14px] text-[#C7C3C3] mb-1">
+          Token Address
+        </label>
         <input
           type="text"
           value={tokenAddress}
@@ -680,7 +686,9 @@ export default function LiquidityForm() {
           className="w-full bg-[#141414] text-white px-4 py-2 rounded-lg focus:outline-none focus:border-[#c7c3c3]"
         />
         {tokenDetails.loading && (
-          <p className="text-yellow-500 text-[14px]">Loading token details...</p>
+          <p className="text-yellow-500 text-[14px]">
+            Loading token details...
+          </p>
         )}
         {tokenDetails.loaded && tokenDetails.symbol && (
           <div className="space-y-1">
@@ -707,10 +715,12 @@ export default function LiquidityForm() {
           <div className="flex items-center gap-2">
             <div className="w-6 rounded-full bg-gray-700 flex items-center justify-center">
               <span className="text-[14px] text-[#C7C3C3]">
-                {tokenDetails.symbol ? tokenDetails.symbol[0] : "T"}
+                {tokenDetails.symbol ? tokenDetails.symbol : "T"}
               </span>
             </div>
-            <span className="text-[14px]">{tokenDetails.symbol || "TOKEN"}</span>
+            <span className="text-[14px]">
+              {tokenDetails.symbol || "TOKEN"}
+            </span>
           </div>
           <input
             type="text"
@@ -729,7 +739,9 @@ export default function LiquidityForm() {
       {/* ETH Amount */}
       <div className="bg-[#0A0A0A] border border-[#2E2E2E] rounded-lg space-y-2">
         <div className="flex justify-between items-center p-2">
-          <span className="text-[14px] text-[#C7C3C3]">{selectedNetwork.name} amount</span>
+          <span className="text-[14px] text-[#C7C3C3]">
+            {selectedNetwork.name} amount
+          </span>
         </div>
         <div className="flex items-center justify-between w-full bg-[#141414] rounded px-4 py-3">
           <div className="flex items-center gap-2">
@@ -763,36 +775,42 @@ export default function LiquidityForm() {
       </div>
 
       {/* Slippage Tolerance */}
-      <div className="p-2 space-y-2">
-        <label className="block text-[14px] text-[#C7C3C3] mb-1">Slippage Tolerance (%)</label>
-        <input
-          type="text"
-          value={slippageTolerance}
-          onChange={(e) => {
-            if (e.target.value === "" || /^\d*\.?\d*$/.test(e.target.value)) {
-              setSlippageTolerance(e.target.value);
-            }
-          }}
-          className="w-full bg-[#141414] text-white px-4 py-2 rounded-lg focus:outline-none"
-        />
-      </div>
+      {isEvmConnected && (
+        <div className="p-2 space-y-2">
+          <label className="block text-[14px] text-[#C7C3C3] mb-1">
+            Slippage Tolerance (%)
+          </label>
+          <input
+            type="text"
+            value={slippageTolerance}
+            onChange={(e) => {
+              if (e.target.value === "" || /^\d*\.?\d*$/.test(e.target.value)) {
+                setSlippageTolerance(e.target.value);
+              }
+            }}
+            className="w-full bg-[#141414] text-white px-4 py-2 rounded-lg focus:outline-none"
+          />
+        </div>
+      )}
 
       {/* Lock Duration */}
-      <div className=" rounded-lg p-2 space-y-2">
-        <label className="block text-[14px] text-[#C7C3C3] mb-1">
-          Lock Duration (days, 0 = no lock)
-        </label>
-        <input
-          type="text"
-          value={lockDuration}
-          onChange={(e) => {
-            if (e.target.value === "" || /^\d*\.?\d*$/.test(e.target.value)) {
-              setLockDuration(e.target.value);
-            }
-          }}
-          className="w-full bg-[#141414] text-white px-4 py-2 rounded-lg focus:outline-none"
-        />
-      </div>
+      {isEvmConnected && (
+        <div className=" rounded-lg p-2 space-y-2">
+          <label className="block text-[14px] text-[#C7C3C3] mb-1">
+            Lock Duration (days, 0 = no lock)
+          </label>
+          <input
+            type="text"
+            value={lockDuration}
+            onChange={(e) => {
+              if (e.target.value === "" || /^\d*\.?\d*$/.test(e.target.value)) {
+                setLockDuration(e.target.value);
+              }
+            }}
+            className="w-full bg-[#141414] text-white px-4 py-2 rounded-lg focus:outline-none"
+          />
+        </div>
+      )}
 
       {/* Submit Button */}
       <button
@@ -800,10 +818,11 @@ export default function LiquidityForm() {
         disabled={
           txStatus.loading || !tokenAmount || !ethAmount || !isWalletConnected //
         }
-        className={`w-full ${txStatus.loading || !tokenAmount || !ethAmount || !isWalletConnected
-          ? "bg-gray-600 cursor-not-allowed"
-          : "bg-[#2D0101] hover:bg-[#2D0101]"
-          } text-white py-3 rounded-lg mt-4 transition-colors`}
+        className={`w-full ${
+          txStatus.loading || !tokenAmount || !ethAmount || !isWalletConnected
+            ? "bg-gray-600 cursor-not-allowed"
+            : "bg-[#2D0101] hover:bg-[#2D0101]"
+        } text-white py-3 rounded-lg mt-4 transition-colors`}
       >
         {txStatus.loading ? (
           <span className="flex items-center justify-center gap-2">

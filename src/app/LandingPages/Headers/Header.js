@@ -252,159 +252,237 @@ const Header = () => {
   };
 
   return (
-<nav className="bg-black text-white font-[Archivo] px-6 md:px-[50px] lg:px-[100px] py-4 min-h-[80px] z-50">
+    <nav className="bg-black text-white font-[Archivo] px-6 md:px-[50px] lg:px-[100px] py-4 min-h-[80px] z-50">
       <div className="w-full flex items-center justify-between">
-{/* Hamburger menu button (mobile only) */}
-   <div className="flex items-center gap-2">
-     <button
-      className="lg:hidden text-white focus:outline-none"
-      onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-    >
-      <svg
-        className="w-6 h-6"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d={mobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
-        />
-      </svg>
-    </button>
-      {/* Left section - Logo */}
-      <div className="flex-shrink-0">
-        <Image src={logo} width={120} alt="logo" priority
-        className="w-full sm:w-[120px] lg:w-[250px]"/>
-      </div>
-
-   </div>
-
-      {/* Center section - Navigation */}
-      <div className="hidden lg:flex flex-1 justify-center">
-      <ul className="flex gap-6 text-sm items-center">
-        <Link href="/"><li className="hover:text-gray-300 whitespace-nowrap">Token launchpad</li></Link>
-        <Link href="/LandingPages/CreateLiquidity"><li className="hover:text-gray-300 whitespace-nowrap">Create liquidity</li></Link>
-
-          <div className="relative" ref={tradeDropdownRef}>
+        {/* Hamburger menu button (mobile only) */}
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsTradeDropdownOpen(!isTradeDropdownOpen)}
-            className="flex items-center gap-2 hover:text-gray-300 whitespace-nowrap"
+            className="lg:hidden text-white focus:outline-none"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            <span>Trade Tokens</span>
-            <IoIosArrowDown className={`transition-transform ${isTradeDropdownOpen ? "rotate-180" : ""}`} />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d={
+                  mobileMenuOpen
+                    ? "M6 18L18 6M6 6l12 12"
+                    : "M4 6h16M4 12h16M4 18h16"
+                }
+              />
+            </svg>
           </button>
-
-          {isTradeDropdownOpen && (
-            <div className="absolute z-20 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-lg">
-              <Link href="/LandingPages/TradeTokens?tab=Swap">
-                <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">Swap</div>
-              </Link>
-              <Link href="/LandingPages/TradeTokens?tab=Send">
-                <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">Send</div>
-              </Link>
-              <Link href="/LandingPages/BuyTokens">
-                <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">Buy</div>
-              </Link>
-            </div>
-          )}
+          {/* Left section - Logo */}
+          <div className="flex-shrink-0">
+            <Image
+              src={logo}
+              width={120}
+              alt="logo"
+              priority
+              className="w-full sm:w-[120px] lg:w-[250px]"
+            />
+          </div>
         </div>
 
-        <Link href="/LandingPages/CreateLiquidity"><li className="hover:text-gray-300 whitespace-nowrap">Tokens Presale</li></Link>
-        <Link href="/LandingPages/CreateLiquidity"><li className="hover:text-gray-300 whitespace-nowrap">Airdrops</li></Link>
-      </ul>
-    </div>
+        {/* Center section - Navigation */}
+        <div className="hidden lg:flex flex-1 justify-center">
+          <ul className="flex gap-6 text-sm items-center">
+            <Link href="/">
+              <li className="hover:text-gray-300 whitespace-nowrap">
+                Token launchpad
+              </li>
+            </Link>
+            <Link href="/LandingPages/CreateLiquidity">
+              <li className="hover:text-gray-300 whitespace-nowrap">
+                Create liquidity
+              </li>
+            </Link>
 
-      {/* Right section - Network selector and wallet */}
-      <div className="flex items-center gap-3">
-        {/* Network Selector */}
-        <div className="lg:flex relative" ref={tokenDropdownRef}>
-          <button
-          onClick={() => setIsTokenDropdownOpen(!isTokenDropdownOpen)}
-          className="flex gap-2 items-center w-[120px] px-3 py-2 border border-gray-600 rounded-lg bg-gray-900 hover:bg-gray-800"
-          disabled={isAttemptingConnection || isSwitchingNetwork}
-        >
-          {getNetworkDisplay()}
-          <IoIosArrowDown className={`ml-auto ${isTokenDropdownOpen ? "rotate-180" : ""}`} />
-        </button>
-
-          {isTokenDropdownOpen && (
-          <div className="absolute z-20 mt-2 right-0 w-full bg-gray-900 border border-gray-700 rounded-lg shadow-lg">
-            {networks.map((network) => (
-              <div
-                key={network.id}
-                onClick={() => handleTokenSelect(network)}
-                className={`flex items-center px-3 py-2 cursor-pointer hover:bg-gray-800 ${selectedNetwork.id === network.id ? "bg-gray-800" : ""}`}
+            <div className="relative" ref={tradeDropdownRef}>
+              <button
+                onClick={() => setIsTradeDropdownOpen(!isTradeDropdownOpen)}
+                className="flex items-center gap-2 hover:text-gray-300 whitespace-nowrap"
               >
-                <Image src={network.icon || "/networks/default.svg"} width={24} height={24} alt={`${network.symbol} logo`} className="mr-2" />
-                <span className="text-sm">{network.name}</span>
+                <span>Trade Tokens</span>
+                <IoIosArrowDown
+                  className={`transition-transform ${
+                    isTradeDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {isTradeDropdownOpen && (
+                <div className="absolute z-20 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-lg">
+                  <Link href="/LandingPages/TradeTokens?tab=Swap">
+                    <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">
+                      Swap
+                    </div>
+                  </Link>
+                  <Link href="/LandingPages/TradeTokens?tab=Send">
+                    <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">
+                      Send
+                    </div>
+                  </Link>
+                  <Link href="/LandingPages/BuyTokens">
+                    <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">
+                      Buy
+                    </div>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <Link href="/LandingPages/CreateLiquidity">
+              <li className="hover:text-gray-300 whitespace-nowrap">
+                Tokens Presale
+              </li>
+            </Link>
+            <Link href="/LandingPages/CreateLiquidity">
+              <li className="hover:text-gray-300 whitespace-nowrap">
+                Airdrops
+              </li>
+            </Link>
+          </ul>
+        </div>
+
+        {/* Right section - Network selector and wallet */}
+        <div className="flex items-center gap-3">
+          {/* Network Selector */}
+          <div className="lg:flex relative" ref={tokenDropdownRef}>
+            <button
+              onClick={() => setIsTokenDropdownOpen(!isTokenDropdownOpen)}
+              className="flex gap-2 items-center w-[120px] px-3 py-2 border border-gray-600 rounded-lg bg-gray-900 hover:bg-gray-800"
+              disabled={isAttemptingConnection || isSwitchingNetwork}
+            >
+              {getNetworkDisplay()}
+              <IoIosArrowDown
+                className={`ml-auto ${isTokenDropdownOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            {isTokenDropdownOpen && (
+              <div className="absolute z-20 mt-2 right-0 w-full bg-gray-900 border border-gray-700 rounded-lg shadow-lg">
+                {networks.map((network) => (
+                  <div
+                    key={network.id}
+                    onClick={() => handleTokenSelect(network)}
+                    className={`flex items-center px-3 py-2 cursor-pointer hover:bg-gray-800 ${
+                      selectedNetwork.id === network.id ? "bg-gray-800" : ""
+                    }`}
+                  >
+                    <Image
+                      src={network.icon || "/networks/default.svg"}
+                      width={24}
+                      height={24}
+                      alt={`${network.symbol} logo`}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">{network.name}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
-      </div>
-<div className="gap-3 items-center flex-shrink-0">
-  {/* Desktop Wallet button */}
-     <button
-        onClick={handleWalletClick}
-        className={`text-xs sm:text-sm font-[500] px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all ${
-          isConnected
-            ? "bg-gray-800 hover:bg-gray-700 text-white"
-            : "bg-[#2D0101] hover:bg-red-800 text-red-200"
-        } ${isAttemptingConnection || (isSwitchingNetwork && switchFailCount < 3) ? "opacity-70 cursor-not-allowed" : ""}`}
-        disabled={isAttemptingConnection || (isSwitchingNetwork && switchFailCount < 3)}
-      >
-        {isConnected ? (
-          <div className="flex flex-col items-start">
-            <span className="text-[14px] sm:text-xs text-gray-300">{truncatedAddress(getCurrentAddress())}</span>
-            <div className="flex items-center gap-1">{getWalletBadge()} {getNetworkStatus()}</div>
+          <div className="gap-3 items-center flex-shrink-0">
+            {/* Desktop Wallet button */}
+            <button
+              onClick={handleWalletClick}
+              className={`text-xs sm:text-sm font-[500] px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition-all ${
+                isConnected
+                  ? "bg-gray-800 hover:bg-gray-700 text-white"
+                  : "bg-[#2D0101] hover:bg-red-800 text-red-200"
+              } ${
+                isAttemptingConnection ||
+                (isSwitchingNetwork && switchFailCount < 3)
+                  ? "opacity-70 cursor-not-allowed"
+                  : ""
+              }`}
+              disabled={
+                isAttemptingConnection ||
+                (isSwitchingNetwork && switchFailCount < 3)
+              }
+            >
+              {isConnected ? (
+                <div className="flex flex-col items-start">
+                  <span className="text-[14px] sm:text-xs text-gray-300">
+                    {truncatedAddress(getCurrentAddress())}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {getWalletBadge()} {getNetworkStatus()}
+                  </div>
+                </div>
+              ) : (
+                "Connect wallet"
+              )}
+            </button>
           </div>
-        ) : "Connect wallet"}
-      </button>
-</div>
 
-        {/* Wallet Button */}
-       
-    </div>
+          {/* Wallet Button */}
+        </div>
 
-{mobileMenuOpen && (
-  <div className="lg:hidden absolute top-[80px] left-1/2 -translate-x-1/2 z-60 bg-black px-6 py-6 rounded-md shadow-lg w-[98%] max-w-sm">
-    <ul className="flex flex-col gap-3 text-sm text-white">
-      <Link href="/" onClick={() => setMobileMenuOpen(false)}><li className="hover:text-gray-300">Token launchpad</li></Link>
-      <Link href="/LandingPages/CreateLiquidity" onClick={() => setMobileMenuOpen(false)}><li className="hover:text-gray-300">Create liquidity</li></Link>
-      <div className="relative" ref={tradeDropdownRef}>
-        <button
-          onClick={() => setIsTradeDropdownOpen(!isTradeDropdownOpen)}
-          className="flex items-center gap-2 hover:text-gray-300 whitespace-nowrap"
-        >
-          <span>Trade Tokens</span>
-          <IoIosArrowDown className={`transition-transform ${isTradeDropdownOpen ? "rotate-180" : ""}`} />
-        </button>
+        {mobileMenuOpen && (
+          <div className="lg:hidden absolute top-[80px] left-1/2 -translate-x-1/2 z-60 bg-black px-6 py-6 rounded-md shadow-lg w-[98%] max-w-sm">
+            <ul className="flex flex-col gap-3 text-sm text-white">
+              <Link href="/" onClick={() => setMobileMenuOpen(false)}>
+                <li className="hover:text-gray-300">Token launchpad</li>
+              </Link>
+              <Link
+                href="/LandingPages/CreateLiquidity"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <li className="hover:text-gray-300">Create liquidity</li>
+              </Link>
+              <div className="relative" ref={tradeDropdownRef}>
+                <button
+                  onClick={() => setIsTradeDropdownOpen(!isTradeDropdownOpen)}
+                  className="flex items-center gap-2 hover:text-gray-300 whitespace-nowrap"
+                >
+                  <span>Trade Tokens</span>
+                  <IoIosArrowDown
+                    className={`transition-transform ${
+                      isTradeDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
 
-        {isTradeDropdownOpen && (
-          <div className="absolute mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-lg left-1/2 -translate-x-1/2">
-            <Link href="/LandingPages/TradeTokens?tab=Swap">
-              <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">Swap</div>
-            </Link>
-            <Link href="/LandingPages/TradeTokens?tab=Send">
-              <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">Send</div>
-            </Link>
-            <Link href="/LandingPages/BuyTokens">
-              <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">Buy</div>
-            </Link>
-          </div>
-        )}
-      </div>
-      <Link href="/LandingPages/CreateLiquidity"><li className="hover:text-gray-300">Tokens Presale</li></Link>
-      <Link href="/LandingPages/CreateLiquidity"><li className="hover:text-gray-300">Airdrops</li></Link>
-    </ul>
-    <br/>
+                {isTradeDropdownOpen && (
+                  <div className="absolute mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-lg left-1/2 -translate-x-1/2">
+                    <Link href="/LandingPages/TradeTokens?tab=Swap">
+                      <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">
+                        Swap
+                      </div>
+                    </Link>
+                    <Link href="/LandingPages/TradeTokens?tab=Send">
+                      <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">
+                        Send
+                      </div>
+                    </Link>
+                    <Link href="/LandingPages/BuyTokens">
+                      <div className="px-4 py-2 hover:bg-gray-800 cursor-pointer">
+                        Buy
+                      </div>
+                    </Link>
+                  </div>
+                )}
+              </div>
+              <Link href="/LandingPages/CreateLiquidity">
+                <li className="hover:text-gray-300">Tokens Presale</li>
+              </Link>
+              <Link href="/LandingPages/CreateLiquidity">
+                <li className="hover:text-gray-300">Airdrops</li>
+              </Link>
+            </ul>
+            <br />
 
-    {/* Mobile Network Selector */}
-    {/* <div className="block lg:hidden" ref={tokenDropdownRef}>
+            {/* Mobile Network Selector */}
+            {/* <div className="block lg:hidden" ref={tokenDropdownRef}>
       <button
         onClick={() => setIsTokenDropdownOpen(!isTokenDropdownOpen)}
         className="flex gap-2 items-center w-full px-3 py-2 border border-gray-600 rounded-lg bg-gray-900 hover:bg-gray-800 transition-colors"
@@ -438,16 +516,14 @@ const Header = () => {
         </div>
         )}
     </div> */}
-  </div>
-)}
+          </div>
+        )}
 
-
-
-      <WalletModal
-        isOpen={isWalletModalOpen}
-        onClose={() => setIsWalletModalOpen(false)}
-      />
-    </div>
+        <WalletModal
+          isOpen={isWalletModalOpen}
+          onClose={() => setIsWalletModalOpen(false)}
+        />
+      </div>
     </nav>
   );
 };

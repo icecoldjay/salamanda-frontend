@@ -30,6 +30,7 @@ export function TokenCreationProvider({ children }) {
   const [distributionData, setDistributionData] = useState({
     method: "generate",
     liquidityPercentage: 70,
+    ethAmount: "0.0001",
     walletCount: 0,
     wallets: [],
   });
@@ -105,18 +106,6 @@ export function TokenCreationProvider({ children }) {
     }
   };
 
-  const createSolanaToken = async (tokenData) => {
-    console.log("Creating Solana token with data:", tokenData);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    return {
-      address: "mock_solana_token_address",
-      name: tokenData.name,
-      symbol: tokenData.symbol,
-      network: "solana",
-    };
-  };
-
   const createEvmToken = async (
     tokenData,
     distributionData,
@@ -156,7 +145,7 @@ export function TokenCreationProvider({ children }) {
       let initialHolders = [];
       let initialAmounts = [];
 
-      // Add creator's address as the first holder with liquidity amount
+      // Add creator's address as the first holder with liquidity amount, possibly a mistake
       initialHolders.push(evmContext.address);
       initialAmounts.push(liquidityAmount);
 

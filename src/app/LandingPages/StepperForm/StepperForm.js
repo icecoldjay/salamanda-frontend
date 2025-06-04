@@ -15,7 +15,6 @@ const StepperForm = () => {
   const { selectedNetwork } = useNetwork();
   const evmContext = useEvm();
 
-  // Get writeContractAsync and waitForTransactionReceiptAsync functions from wagmi
   const { writeContractAsync } = useWriteContract();
 
   const {
@@ -66,19 +65,23 @@ const StepperForm = () => {
     }
   };
 
+  const handleSolanaTokenCreation = () => {
+    setStep(4); // Handle step change in StepperForm
+  };
+
   return (
     <>
       {step === 1 && (
         <CreateTokenForm
           onNext={handleCreateTokenNext}
           onCreateToken={handleCreateToken}
-          setStep={setStep}
+          onSolanaSuccess={handleSolanaTokenCreation}
         />
       )}
       {step === 2 && (
         <TokenDistributionForm
           onBack={() => setStep(1)}
-          onNext={handleDistributionNext}
+          onNext={() => setStep(distributionData.method === "generate" ? 3 : 4)}
           networkType={selectedNetwork.type}
         />
       )}

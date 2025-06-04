@@ -9,7 +9,7 @@ import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 import { base64 } from "@metaplex-foundation/umi/serializers";
 
-const CreateTokenForm = ({ onNext, onCreateToken, setStep }) => {
+const CreateTokenForm = ({ onNext, onCreateToken, onSolanaSuccess }) => {
   const { tokenData, updateTokenData, isCreating, creationError } =
     useTokenCreation();
   const { isEvm, isSolana } = useNetwork();
@@ -106,8 +106,10 @@ const CreateTokenForm = ({ onNext, onCreateToken, setStep }) => {
 
       setTxSignature(signature);
       setStatus(`Transaction sent! Signature: ${signature}, mint: ${mint}`);
-      alert(`mint Address: ${mint}`);
-      setStep(4);
+
+      if (onSolanaSuccess) {
+        onSolanaSuccess();
+      }
     } catch (error) {
       console.error("Transaction error:", error);
       setStatus(`Transaction failed: ${error.message}`);
