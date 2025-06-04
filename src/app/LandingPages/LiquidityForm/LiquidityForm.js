@@ -493,7 +493,7 @@ export default function LiquidityForm() {
         transactionStep: "preparing",
       }));
 
-      const res = await fetch("http://localhost:5000/createPool", {
+      const res = await fetch("https://api.salamanda.xyz/createPool", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -65,7 +65,7 @@ const CreateTokenForm = ({ onNext, onCreateToken, onSolanaSuccess }) => {
         setStatus("Requesting transaction from backend...");
 
         const response = await fetch(
-          "http://localhost:5000/createTokenWithMetadata",
+          "https://api.salamanda.xyz/createTokenWithMetadata",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

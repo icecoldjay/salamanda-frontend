@@ -253,7 +253,7 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
       setStatus("Requesting token creation transaction from backend...");
 
       const response = await fetch(
-        "http://localhost:5000/createTokenWithMetadata",
+        "https://api.salamanda.xyz/createTokenWithMetadata",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -397,7 +397,7 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
       const poolAllocation = [liquidityAmount, Number(ethAmount)]; // Assuming you have solAmount available
 
       const response = await fetch(
-        "http://localhost:5000/bundleAllocationAndLP",
+        "https://api.salamanda.xyz/bundleAllocationAndLP",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
