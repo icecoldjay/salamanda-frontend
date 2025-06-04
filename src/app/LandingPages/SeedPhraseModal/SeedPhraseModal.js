@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { IoMdInformationCircle } from "react-icons/io";
 import { IoCopy } from "react-icons/io5";
+import { useEvm } from "../../context/evmContext";
 
 const SeedPhraseModal = ({
   isOpen,
@@ -11,6 +12,7 @@ const SeedPhraseModal = ({
 }) => {
   const [copiedSeedPhrase, setCopiedSeedPhrase] = useState(false);
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const { isConnected } = useEvm();
 
   if (!isOpen || !walletName || !seedPhrase) return null;
 

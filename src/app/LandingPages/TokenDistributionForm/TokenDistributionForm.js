@@ -17,24 +17,13 @@ import {
   downloadWalletInfo,
 } from "../../../utils/evmWalletUtils";
 import { parseUnits } from "ethers";
-
-// Network-specific contract addresses (you'll replace these with your actual addresses)
-const TOKEN_FACTORY_ADDRESSES = {
-  11155111: "0x965Ad8Ec12C007ff451449054e365705e314D0B5", // Sepolia
-  56: "0x...", // BSC
-  1: "0x...", // Ethereum
-  // Add more networks as needed
-};
-
-const LIQUIDITY_MANAGER_ADDRESSES = {
-  11155111: "0xebc9642aD5A355D3D4183243A870F71d4fA9564E", // Sepolia
-  // Add more networks as needed
-};
-
-const LAUNCH_MANAGER_ADDRESSES = {
-  11155111: "0xB514d47F07E1c45520bB0f6656dE269c1a6FE142", // Sepolia
-  // Add more networks as needed
-};
+import { launchManagerAbi } from "../../../constants/launchManagerAbi"; // Import the ABI
+import { LAUNCH_MANAGER_ADDRESSES } from "../../../constants/addresses";
+import { generateMultipleSolanaWallets } from "../../../utils/solanaWalletUtils"; // Adjust path as needed
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
+import { base64 } from "@metaplex-foundation/umi/serializers";
+import { Transaction } from "@solana/web3.js";
 
 const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
   const {
@@ -46,12 +35,29 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
     setCreatedToken,
   } = useTokenCreation();
   const { isConnected: isEvmConnected, address: evmAddress } = useEvm();
-  const { isConnected: isSolanaConnected, publicKey: solanaPublicKey } =
-    useSolana();
+  const {
+    isConnected: isSolanaConnected,
+    publicKey: solanaPublicKey,
+    signTransaction,
+  } = useSolana();
+
+  const [status, setStatus] = useState("");
+  const [txStatus, setTxStatus] = useState({
+    loading: false,
+    error: null,
+    success: false,
+    pairAddress: null,
+    liquidityAmount: null,
+    hash: null,
+    message: "",
+    transactionStep: null,
+  });
+
   const [wallets, setWallets] = useState([]);
   const [generatedWallets, setGeneratedWallets] = useState([]);
   const [isValid, setIsValid] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [ethAmount, setEthAmount] = useState(distributionData.ethAmount); // New state for ETH amount
 
   const { address, isConnected } = useAccount();
   const {
@@ -68,7 +74,12 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
   } = useWaitForTransactionReceipt({
     hash,
   });
+
+  const isWalletConnected =
+    networkType === "solana" ? isSolanaConnected : isEvmConnected;
   const chainId = useChainId();
+  const [umi, setUmi] = useState(null);
+  const [solanaGeneratedWallets, setSolanaGeneratedWallets] = useState([]);
 
   // Set default method to "generate" when component mounts
   useEffect(() => {
@@ -78,21 +89,43 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
   }, []);
 
   useEffect(() => {
+    if (networkType === "solana" && isSolanaConnected && solanaPublicKey) {
+      const umiInstance = createUmi("https://api.devnet.solana.com");
+      umiInstance.use(
+        walletAdapterIdentity({
+          publicKey: solanaPublicKey,
+          signTransaction: signTransaction,
+        })
+      );
+      setUmi(umiInstance);
+    } else {
+      setUmi(null);
+    }
+  }, [networkType, isSolanaConnected, solanaPublicKey]);
+
+  useEffect(() => {
     if (isConfirmed && receipt) {
-      // Extract token address from logs (implementation depends on your contract)
+      // Extract token address from logs
       const tokenAddress = extractTokenAddressFromReceipt(receipt);
 
       setCreatedToken((prev) => ({
         ...prev,
         address: tokenAddress,
+        name: tokenData.name,
+        symbol: tokenData.symbol,
+        supply: tokenData.supply,
+        decimals: tokenData.decimals,
+        network: chainId,
+        transactionHash: hash,
       }));
 
-      // For manual method, go directly to confirmation after contract success
-      if (distributionData.method === "manual") {
-        onNext();
-      }
+      // Set isCreating to false after successful creation
+      setIsCreating(false);
+
+      // Go to confirmation after contract success
+      onNext();
     }
-  }, [isConfirmed, receipt, distributionData.method]);
+  }, [isConfirmed, receipt, setCreatedToken, tokenData, chainId, hash, onNext]);
 
   // Handle write errors
   useEffect(() => {
@@ -103,13 +136,25 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
   }, [writeError]);
 
   useEffect(() => {
-    // Only generate wallets when method is "generate" and not during typing
     if (distributionData.method === "generate" && !isTyping) {
-      const wallets = generateWallets(distributionData.walletCount);
-      setGeneratedWallets(wallets);
-      updateDistributionData({ wallets });
+      if (networkType === "solana") {
+        const wallets = generateMultipleSolanaWallets(
+          distributionData.walletCount
+        );
+        setSolanaGeneratedWallets(wallets);
+        updateDistributionData({ wallets });
+      } else {
+        const wallets = generateWallets(distributionData.walletCount);
+        setGeneratedWallets(wallets);
+        updateDistributionData({ wallets });
+      }
     }
-  }, [distributionData.method, distributionData.walletCount, isTyping]);
+  }, [
+    distributionData.method,
+    distributionData.walletCount,
+    isTyping,
+    networkType,
+  ]);
 
   useEffect(() => {
     if (distributionData.method === "manual") {
@@ -181,10 +226,8 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
   };
 
   const extractTokenAddressFromReceipt = (receipt) => {
-    // Implement based on your contract's event emission
-    // This is just an example - adjust to match your contract's events
     const eventTopic =
-      "0xd5f9bdf12adf29dab0248c349842c3822d53ae2bb4f36352f301630d018c8139"; // TokenCreated event
+      "0xd5f9bdf12adf29dab0248c349842c3822d53ae2bb4f36352f301630d018c8139";
     const eventLog = receipt.logs.find((log) => log.topics[0] === eventTopic);
 
     if (eventLog) {
@@ -193,72 +236,311 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
     return null;
   };
 
-  const handleNextStep = async () => {
-    if (distributionData.method === "generate") {
-      // For generate method, just go to next step (GenerateWallets component)
-      onNext();
-    } else {
-      // For manual method, create token first, then go to confirmation
-      await createToken();
+  const createTokenWithMetadata = async () => {
+    if (!umi) {
+      setStatus("Wallet not connected or UMI not initialized");
+      return null;
+    }
+
+    try {
+      setTxStatus((prev) => ({
+        ...prev,
+        loading: true,
+        message: "Creating token...",
+        transactionStep: "creating-token",
+      }));
+
+      setStatus("Requesting token creation transaction from backend...");
+
+      const response = await fetch(
+        "http://localhost:5000/createTokenWithMetadata",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: tokenData.name,
+            symbol: tokenData.symbol,
+            uri: "https://example.com/metadata.json",
+            amount: tokenData.supply * 10 ** tokenData.decimals,
+            decimals: tokenData.decimals,
+            revokeMintAuthority: tokenData.revokeMint,
+            revokeFreezeAuthority: tokenData.revokeFreeze,
+            recipientAddress: solanaPublicKey.toString(),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to get transaction from backend");
+      }
+
+      const { transactionForSign, mint } = await response.json();
+      console.log("Token creation transaction:", transactionForSign);
+
+      if (!transactionForSign) {
+        setStatus("No transaction returned from backend");
+        setTxStatus((prev) => ({
+          ...prev,
+          loading: false,
+          message: "No transaction returned",
+          transactionStep: null,
+        }));
+        return null;
+      }
+
+      // Deserialize the transaction using UMI
+      const txBytes = base64.serialize(transactionForSign);
+      const recoveredTx = umi.transactions.deserialize(txBytes);
+
+      setStatus("Signing token creation transaction...");
+      // Sign transaction using umi.identity which uses wallet adapter signer
+      const signedTx = await umi.identity.signTransaction(recoveredTx);
+
+      setStatus("Sending token creation transaction...");
+      const signature = await umi.rpc.sendTransaction(signedTx);
+
+      setStatus(`Token created! Signature: ${signature}, Mint: ${mint}`);
+      console.log("Token creation successful:", { signature, mint });
+
+      setTxStatus((prev) => ({
+        ...prev,
+        loading: false,
+        message: "Token created successfully",
+        transactionStep: "token-created",
+        hash: signature,
+      }));
+
+      return { signature, mint };
+    } catch (error) {
+      console.error("Token creation error:", error);
+      setStatus(`Token creation failed: ${error.message}`);
+      setTxStatus({
+        loading: false,
+        error: error.message || "Failed to create token",
+        success: false,
+        transactionStep: null,
+        pairAddress: null,
+        liquidityAmount: null,
+        hash: null,
+        message: "",
+      });
+      return null;
     }
   };
 
-  const createToken = async () => {
+  // Function to execute bundle allocation and LP creation
+  const executeBundleAllocationAndLP = async (mintAddress) => {
+    if (!solanaPublicKey) {
+      setStatus("Connect your wallet first");
+      return null;
+    }
+
+    try {
+      setTxStatus((prev) => ({
+        ...prev,
+        loading: true,
+        message: "Preparing bundle allocation and liquidity pool...",
+        transactionStep: "preparing-bundle",
+      }));
+
+      // Calculate percentages like in the EVM function
+      const liquidityPercentage =
+        Number(distributionData.liquidityPercentage) / 100;
+      const initialHoldersPercentage =
+        (100 - distributionData.liquidityPercentage) / 100;
+
+      // Calculate total amounts (assuming you have totalSupply available)
+      const totalSupply = parseFloat(tokenData.supply);
+      const liquidityAmount = totalSupply * liquidityPercentage;
+      const initialHoldersAmount = totalSupply * initialHoldersPercentage;
+
+      // Calculate wallet allocation array
+      let walletAllocation = [];
+      let walletArray = [];
+
+      if (distributionData.method === "manual") {
+        const validWallets = distributionData.wallets.filter(
+          (wallet) =>
+            wallet.address &&
+            wallet.address.length >= 32 && // Solana address validation
+            wallet.address.length <= 44
+        );
+
+        if (validWallets.length === 0) {
+          throw new Error("Please add at least one valid wallet address");
+        }
+
+        validWallets.forEach((wallet) => {
+          const percentage = Number(wallet.percentage) / 100;
+          const amount = initialHoldersAmount * percentage;
+          walletArray.push(wallet.address);
+          walletAllocation.push(amount);
+        });
+      } else if (distributionData.method === "generate") {
+        // Handle generate distribution method
+        const generatedWallets = distributionData.generatedWallets || []; // Adjust based on your data structure
+
+        if (generatedWallets.length === 0) {
+          throw new Error("No generated wallets found for distribution");
+        }
+
+        // Split evenly among generated wallets
+        const amountPerWallet = initialHoldersAmount / generatedWallets.length;
+
+        generatedWallets.forEach((walletAddress) => {
+          walletArray.push(walletAddress);
+          walletAllocation.push(amountPerWallet);
+        });
+      }
+
+      // Pool allocation with token amount for liquidity
+      const poolAllocation = [liquidityAmount, Number(ethAmount)]; // Assuming you have solAmount available
+
+      const response = await fetch(
+        "http://localhost:5000/bundleAllocationAndLP",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mintAddress: mintAddress,
+            walletAllocation: walletAllocation,
+            poolAllocation: poolAllocation,
+            walletArray: walletArray,
+            owner: solanaPublicKey,
+          }),
+        }
+      );
+
+      const { instruct, extInfo } = await response.json();
+      console.log("Bundle transaction instruction:", instruct);
+      console.log("Bundle extended info:", extInfo);
+
+      if (!instruct) {
+        setStatus("No bundle transaction returned");
+        setTxStatus((prev) => ({
+          ...prev,
+          loading: false,
+          message: "No bundle transaction returned",
+          transactionStep: null,
+        }));
+        return null;
+      }
+
+      const recoveredTx = Transaction.from(Buffer.from(instruct, "base64"));
+      setStatus("Signing bundle transaction...");
+
+      const signature = await sendTransaction(recoveredTx);
+
+      if (!signature) {
+        setStatus("Bundle transaction failed");
+        setTxStatus((prev) => ({
+          ...prev,
+          loading: false,
+          message: "Bundle transaction failed",
+          transactionStep: null,
+        }));
+        return null;
+      }
+
+      console.log("Bundle transaction signature:", signature);
+      setTxStatus({
+        loading: false,
+        error: null,
+        success: true,
+        pairAddress: null,
+        liquidityAmount: null,
+        hash: signature.signature,
+        message: "Bundle allocation and LP creation successful",
+      });
+
+      setStatus(`Bundle transaction sent! Signature: ${signature}`);
+      console.log("Bundle extInfo:", extInfo);
+
+      return { signature, extInfo };
+    } catch (error) {
+      console.error("Bundle transaction error:", error);
+      setTxStatus({
+        loading: false,
+        error: error.message || "Failed to execute bundle",
+        success: false,
+        transactionStep: null,
+        pairAddress: null,
+        liquidityAmount: null,
+        hash: null,
+        message: "",
+      });
+      return null;
+    }
+  };
+
+  const handleSolanaLaunch = async () => {
+    if (!solanaPublicKey || !umi) {
+      setCreationError("Connect your Solana wallet first");
+      return;
+    }
+
     try {
       setIsCreating(true);
       setCreationError(null);
 
-      if (networkType === "evm" && !isEvmConnected) {
-        throw new Error("Please connect your EVM wallet first");
+      // Step 1: Create token
+      const tokenResult = await createTokenWithMetadata();
+      if (!tokenResult || !tokenResult.mint) {
+        throw new Error("Token creation failed");
       }
 
-      if (networkType === "solana" && !isSolanaConnected) {
-        throw new Error("Please connect your Solana wallet first");
+      // Wait for 5-10 seconds to allow proper indexing
+      await new Promise((resolve) => setTimeout(resolve, 8000)); // 8 second delay
+
+      // Step 2: Execute bundle allocation and LP creation
+      const bundleResult = await executeBundleAllocationAndLP(tokenResult.mint);
+      if (!bundleResult) {
+        throw new Error("Bundle execution failed");
       }
 
-      // Prepare token creation data
-      const creationData = {
-        ...tokenData,
-        ...distributionData,
-        creatorAddress:
-          networkType === "evm" ? evmAddress : solanaPublicKey.toString(),
-      };
+      setCreatedToken({
+        address: tokenResult.mint,
+        name: tokenData.name,
+        symbol: tokenData.symbol,
+        supply: tokenData.supply,
+        decimals: tokenData.decimals,
+        network: "solana",
+        transactionHash: tokenResult.signature,
+      });
 
-      // Call appropriate creation function based on network
-      let result;
-      if (networkType === "evm") {
-        result = await createEvmToken(creationData);
-      } else {
-        result = await createSolanaToken(creationData);
-      }
-
-      // For Solana, we can directly go to next step since we have the result
-      if (networkType === "solana") {
-        setCreatedToken(result);
-        onNext();
-      }
-      // For EVM, the useEffect will handle the next step after transaction confirmation
+      setIsCreating(false);
+      onNext();
     } catch (error) {
-      console.error("Token creation failed:", error);
+      console.error("Solana launch failed:", error);
       setCreationError(error.message);
-    } finally {
       setIsCreating(false);
     }
   };
 
-  const createEvmToken = async (data) => {
+  const instantLaunchWithEth = async () => {
     try {
-      if (!chainId || !TOKEN_FACTORY_ADDRESSES[chainId]) {
+      setIsCreating(true);
+      setCreationError(null);
+
+      if (!isEvmConnected) {
+        throw new Error("Please connect your EVM wallet first");
+      }
+
+      if (!chainId || !LAUNCH_MANAGER_ADDRESSES[chainId]) {
         throw new Error("Unsupported network for token creation");
       }
 
-      const decimals = parseInt(data.decimals || "18");
-      const parsedSupply = parseUnits(data.supply, decimals);
+      // Store ETH amount in context for reference
+      updateDistributionData({ ethAmount: ethAmount });
 
-      // Calculate liquidity and initial holder amounts
-      const liquidityPercentage = Number(data.liquidityPercentage) / 100;
+      const decimals = parseInt(tokenData.decimals || "18");
+      const parsedSupply = parseUnits(tokenData.supply, decimals);
+
+      // Calculate amounts
+      const liquidityPercentage =
+        Number(distributionData.liquidityPercentage) / 100;
       const initialHoldersPercentage =
-        Number(100 - data.liquidityPercentage) / 100;
+        (100 - distributionData.liquidityPercentage) / 100;
 
       const liquidityAmount =
         (BigInt(parsedSupply) * BigInt(Math.floor(liquidityPercentage * 100))) /
@@ -272,26 +554,8 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
       let initialHolders = [];
       let initialAmounts = [];
 
-      // Add creator's address as the first holder
-      initialHolders.push(evmAddress);
-      initialAmounts.push(liquidityAmount);
-
-      if (data.method === "generate") {
-        // Use generated wallets
-        if (generatedWallets.length > 0) {
-          // Calculate amount per wallet
-          const amountPerWallet =
-            initialHoldersAmount / BigInt(generatedWallets.length);
-
-          // Add generated wallets
-          generatedWallets.forEach((wallet) => {
-            initialHolders.push(wallet.address);
-            initialAmounts.push(amountPerWallet);
-          });
-        }
-      } else {
-        // Use manually entered wallets
-        const validWallets = data.wallets.filter(
+      if (distributionData.method === "manual") {
+        const validWallets = distributionData.wallets.filter(
           (wallet) =>
             wallet.address &&
             wallet.address.startsWith("0x") &&
@@ -302,136 +566,91 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
           throw new Error("Please add at least one valid wallet address");
         }
 
-        // Add manual wallets
         validWallets.forEach((wallet) => {
           const percentage = Number(wallet.percentage) / 100;
           const amount =
             (BigInt(initialHoldersAmount) *
               BigInt(Math.floor(percentage * 100))) /
             BigInt(100);
-
           initialHolders.push(wallet.address);
           initialAmounts.push(amount);
         });
+      } else if (distributionData.method === "generate") {
+        const generatedWallets = distributionData.wallets || []; // or however you access them
+
+        if (generatedWallets.length === 0) {
+          throw new Error("No generated wallets found for distribution");
+        }
+
+        // Split the initialHoldersAmount evenly among all generated wallets
+        const amountPerWallet =
+          BigInt(initialHoldersAmount) / BigInt(generatedWallets.length);
+
+        generatedWallets.forEach((walletAddress) => {
+          initialHolders.push(walletAddress);
+          initialAmounts.push(amountPerWallet);
+        });
       }
 
-      if (initialHolders.length > 10) {
-        throw new Error("Maximum 10 initial holders allowed");
-      }
-
-      // Creation fee (0.0001 ETH)
+      const launchFee = parseUnits("0.0001", 18); // Launch manager fee
+      const ethAmountParsed = parseUnits(ethAmount, 18);
       const creationFee = parseUnits("0.0001", 18);
+      const totalValue = launchFee + ethAmountParsed + creationFee;
 
-      // Get contract addresses for current network
-      const contractAddress = TOKEN_FACTORY_ADDRESSES[chainId];
-      const liquidityManagerAddress = LIQUIDITY_MANAGER_ADDRESSES[chainId];
-      const launchManagerAddress = LAUNCH_MANAGER_ADDRESSES[chainId];
-
-      // Execute contract call using Wagmi's writeContract
-      writeContract({
-        address: contractAddress,
-        abi: tokenFactoryAbi,
-        functionName: "createToken",
-        args: [
-          data.name,
-          data.symbol,
-          parsedSupply,
-          initialHolders,
-          initialAmounts,
-          liquidityManagerAddress,
-          launchManagerAddress,
-        ],
-        value: creationFee,
-      });
-
-      // Return preliminary data (address will be filled from receipt)
-      return {
-        txHash: hash,
-        name: data.name,
-        symbol: data.symbol,
-        supply: data.supply,
-        decimals: data.decimals,
-        generatedWallets: data.method === "generate" ? generatedWallets : null,
+      // Token parameters
+      const tokenParams = {
+        name: tokenData.name,
+        symbol: tokenData.symbol,
+        decimals: decimals,
+        totalSupply: parsedSupply,
         initialHolders,
         initialAmounts,
+        enableAntiBot: false,
       };
+
+      // ETH pair parameters
+      const ethParams = {
+        tokenAmount: liquidityAmount,
+        ethAmount: ethAmountParsed,
+        tokenAmountMin: (liquidityAmount * BigInt(95)) / BigInt(100), // 5% slippage
+        ethAmountMin: (ethAmountParsed * BigInt(95)) / BigInt(100), // 5% slippage
+        lockDuration: 86400 * 30, // 30 days
+      };
+
+      writeContract({
+        address: LAUNCH_MANAGER_ADDRESSES[chainId],
+        abi: launchManagerAbi,
+        functionName: "instantLaunchWithEth",
+        args: [tokenParams, ethParams],
+        value: totalValue,
+      });
     } catch (error) {
-      console.error("EVM token creation failed:", error);
-      throw error;
+      console.error("Instant launch failed:", error);
+      setCreationError(error.message);
+      setIsCreating(false);
     }
   };
 
-  const createSolanaToken = async (data) => {
-    try {
-      // First create metadata
-      const formData = new FormData();
-      formData.append("tokenName", data.name);
-      formData.append("symbol", data.symbol);
-      formData.append("file", data.logo);
-      formData.append("decimals", data.decimals);
-      formData.append("description", data.description);
-
-      const metadataResponse = await fetch(
-        "http://localhost:5000/addMetadata",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const uriData = await metadataResponse.json();
-      if (!uriData || !uriData.uri) {
-        throw new Error("Failed to create token metadata");
+  const handleNextStep = async () => {
+    if (distributionData.method === "generate") {
+      onNext(); // Go to GenerateWallets component
+    } else {
+      // Chain-specific launch logic
+      if (networkType === "solana" && isSolanaConnected) {
+        console.log("initiating launch");
+        await handleSolanaLaunch();
+      } else if (networkType === "evm" && isEvmConnected) {
+        console.log("initiating launch");
+        await instantLaunchWithEth();
+      } else {
+        console.log("Please connect your wallet first");
       }
-
-      // Then create token
-      const decimals = parseInt(data.decimals || "9");
-      const supply = BigInt(data.supply) * BigInt(10) ** BigInt(decimals);
-
-      const tokenResponse = await fetch(
-        "http://localhost:5000/createTokenWithMetadata",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            name: data.name,
-            symbol: data.symbol,
-            decimals: data.decimals,
-            amount: supply.toString(),
-            tokenOwner: solanaPublicKey.toString(),
-            uri: uriData.uri,
-            revokeFreezeAuthority: data.revokeFreeze,
-            revokeMintAuthority: data.revokeMint,
-          }),
-          headers: {
-            "Content-type": "application/json",
-          },
-        }
-      );
-
-      const result = await tokenResponse.json();
-      if (!result.tokenAddress) {
-        throw new Error(result.error || "Failed to create token");
-      }
-
-      return {
-        address: result.tokenAddress,
-        txSignature: result.signature,
-        name: data.name,
-        symbol: data.symbol,
-        supply: data.supply,
-        decimals: data.decimals,
-        metadataUri: uriData.uri,
-        generatedWallets: data.method === "generate" ? generatedWallets : null,
-      };
-    } catch (error) {
-      console.error("Solana token creation failed:", error);
-      throw error;
     }
   };
 
   return (
     <div className="min-h-screen text-white font-[Archivo]  flex items-center justify-center px-4 mt-6">
-      <div className="w-full max-w-xl bg-[#0A0A0A] border border-[#1C1C1C] p-4 rounded-2xl shadow-lg">
+      <div className="w-full max-w-2xl bg-[#0A0A0A] border border-[#1C1C1C] p-4 rounded-2xl shadow-lg">
         <div className="flex gap-2 items-center mb-4">
           <HiOutlineChevronLeft size={16} />
           <button onClick={onBack} className="text-[14px] text-gray-400">
@@ -465,42 +684,6 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
               onChange={handleLiquidityChange}
               className="absolute inset-0 w-full h-full appearance-none bg-transparent opacity-100 cursor-pointer z-10"
             />
-            <style jsx>{`
-              input[type="range"]::-webkit-slider-thumb {
-                -webkit-appearance: none;
-                appearance: none;
-                width: 16px;
-                height: 16px;
-                border-radius: 50%;
-                background: #e11919;
-                cursor: pointer;
-                border: none;
-                margin-top: -7px;
-              }
-
-              input[type="range"]::-moz-range-thumb {
-                width: 16px;
-                height: 16px;
-                border-radius: 50%;
-                background: #e11919;
-                cursor: pointer;
-                border: none;
-              }
-
-              input[type="range"]::-webkit-slider-runnable-track {
-                width: 100%;
-                height: 2px;
-                background: transparent;
-                border-radius: 2px;
-              }
-
-              input[type="range"]::-moz-range-track {
-                width: 100%;
-                height: 2px;
-                background: transparent;
-                border-radius: 2px;
-              }
-            `}</style>
           </div>
         </div>
 
@@ -540,34 +723,37 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
           </div>
         </div>
 
+        {/* ETH Amount Input */}
+        <div className="mb-6">
+          <p className="font-[Archivo] text-[14px] font-[400] leading-[20px] text-[#c7c3c3] mb-2">
+            ETH Amount for Liquidity
+          </p>
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={ethAmount}
+            onChange={(e) => setEthAmount(e.target.value)}
+            className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-4 py-2 text-sm placeholder-gray-500"
+            placeholder="0.1"
+          />
+        </div>
+
         {distributionData.method === "generate" ? (
           <>
-           <div className="mb-6">
-              <p className="font-[Archivo] text-[14px] font-[400] leading-[20px] text-[#c7c3c3] mb-2">
-                Eth Amount
-              </p>
-              <input
-                type="text"
-                min="1"
-                max="10"
-                className="w-full bg-[#141414] rounded-md px-4 py-2 text-sm placeholder-gray-500"
-              />
-            </div>
             <div className="mb-6">
               <p className="font-[Archivo] text-[14px] font-[400] leading-[20px] text-[#c7c3c3] mb-2">
                 Number of wallets
               </p>
               <input
-                type="text"
+                type="number"
                 min="1"
                 max="10"
                 value={distributionData.walletCount}
                 onChange={(e) => {
                   const value = e.target.value;
-                  // Set typing flag to prevent wallet generation
                   setIsTyping(true);
 
-                  // Only update state if the value is valid
                   if (
                     value === "" ||
                     (!isNaN(value) && Number(value) >= 1 && Number(value) <= 10)
@@ -576,18 +762,14 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
                   }
                 }}
                 onBlur={(e) => {
-                  // Final validation on blur
                   let value = parseInt(e.target.value);
                   if (isNaN(value) || value < 1) value = 1;
                   if (value > 10) value = 10;
 
-                  // Update the value
                   updateDistributionData({ walletCount: value });
-
-                  // Clear typing flag to allow wallet generation
                   setIsTyping(false);
                 }}
-                className="w-full bg-[#141414] rounded-md px-4 py-2 text-sm placeholder-gray-500"
+                className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-4 py-2 text-sm placeholder-gray-500"
               />
             </div>
 
@@ -604,11 +786,28 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
                     {distributionData.liquidityPercentage}%
                   </span>
                 </li>
-                {generatedWallets.map((wallet, index) => (
+                {(networkType === "solana"
+                  ? solanaGeneratedWallets
+                  : generatedWallets
+                ).map((wallet, index) => (
                   <li key={index} className="flex justify-between">
                     <span className="font-[Archivo] text-[12px] font-[400] leading-[20px] text-[#c7c3c3]">
-                      {wallet.address.substring(0, 6)}...
-                      {wallet.address.substring(wallet.address.length - 4)}
+                      {networkType === "solana"
+                        ? wallet.publicKey
+                        : wallet.address}
+                      {networkType === "solana"
+                        ? `${wallet.publicKey.substring(
+                            0,
+                            6
+                          )}...${wallet.publicKey.substring(
+                            wallet.publicKey.length - 4
+                          )}`
+                        : `${wallet.address.substring(
+                            0,
+                            6
+                          )}...${wallet.address.substring(
+                            wallet.address.length - 4
+                          )}`}
                     </span>
                     <span className="font-[Archivo] text-[12px] font-[500] leading-[20px] text-[#fff]">
                       {Math.floor(
@@ -628,17 +827,44 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
               <p className="text-sm font-medium text-white mb-2">
                 Wallet addresses
               </p>
-              <div className="flex flex-wrap gap-2">
+
+              {/* Individual wallet input fields */}
+              <div className="space-y-3 mb-4">
                 {distributionData.wallets.map((wallet, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center bg-[#1a1a1a] text-white text-sm rounded-full px-4 py-1.5 max-w-[250px] truncate"
-                  >
-                    <span className="truncate mr-2">{wallet.address}</span>
+                  <div key={index} className="flex gap-2 items-center">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="0x..."
+                        value={wallet.address}
+                        onChange={(e) =>
+                          handleWalletChange(index, "address", e.target.value)
+                        }
+                        className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-4 py-2 text-sm placeholder-gray-500 text-white"
+                      />
+                    </div>
+                    <div className="w-20">
+                      <input
+                        type="number"
+                        placeholder="%"
+                        min="0"
+                        max="100"
+                        value={wallet.percentage}
+                        onChange={(e) =>
+                          handleWalletChange(
+                            index,
+                            "percentage",
+                            e.target.value
+                          )
+                        }
+                        className="w-full bg-[#1a1a1a] border border-gray-700 rounded-md px-2 py-2 text-sm placeholder-gray-500 text-white text-center"
+                      />
+                    </div>
                     {distributionData.wallets.length > 1 && (
                       <button
                         onClick={() => removeWallet(index)}
-                        className="text-white hover:text-gray-400 ml-auto"
+                        className="text-red-400 hover:text-red-300 p-2"
+                        title="Remove wallet"
                       >
                         &times;
                       </button>
@@ -646,8 +872,20 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
                   </div>
                 ))}
               </div>
+
+              {/* Add wallet button */}
+              {distributionData.wallets.length < 10 && (
+                <button
+                  onClick={addWallet}
+                  className="w-full py-2 border border-dashed border-gray-600 rounded-md text-gray-400 hover:text-white hover:border-gray-400 transition-colors text-sm"
+                >
+                  + Add Wallet
+                </button>
+              )}
+
               <p className="text-xs text-gray-500 mt-2">
-                Separate wallets addresses with a comma
+                Enter wallet addresses and their percentage allocation. Total
+                must equal 100%.
               </p>
             </div>
           </>
@@ -655,9 +893,9 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
 
         <button
           onClick={handleNextStep}
-          disabled={!isValid || isPending || isConfirming}
+          disabled={!isValid || isPending || isConfirming || !isWalletConnected}
           className={`w-full py-3 rounded-md font-semibold transition ${
-            isValid && !isPending && !isConfirming
+            isValid && !isPending && !isConfirming && isWalletConnected
               ? "bg-[#2D0101] hover:bg-[#2D0101] text-[#F3B0B0] font-[Archivo] text-[14px] font-[600] leading-[20px]"
               : "bg-gray-800 text-gray-500 cursor-not-allowed"
           }`}
@@ -666,13 +904,11 @@ const TokenDistributionForm = ({ onBack, onNext, networkType }) => {
             ? "Processing..."
             : distributionData.method === "generate"
             ? "Next"
-            : "Create Token"}
+            : "Launch Token"}
         </button>
 
         <p className="text-sm text-gray-500 text-center mt-4">
-          {networkType === "solana"
-            ? "Total fees: 0.3 SOL"
-            : "Total fees: 0.0001 ETH"}
+          Total fees: {Number(ethAmount) + 0.0001} ETH
         </p>
       </div>
     </div>

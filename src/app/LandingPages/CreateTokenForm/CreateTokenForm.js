@@ -54,67 +54,72 @@ const CreateTokenForm = ({ onNext, onCreateToken, onSolanaSuccess }) => {
 
   //function to handle token creation
   const handleMint = async () => {
-    if (!umi) {
-      setStatus("Wallet not connected or UMI not initialized");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setStatus("Requesting transaction from backend...");
-
-      const response = await fetch(
-        "http://localhost:5000/createTokenWithMetadata",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: tokenData.name,
-            symbol: tokenData.symbol,
-            uri: "https://example.com/metadata.json",
-            amount: tokenData.supply * 10 ** tokenData.decimals,
-            decimals: tokenData.decimals,
-            revokeMintAuthority: tokenData.revokeMint,
-            revokeFreezeAuthority: tokenData.revokeFreeze,
-            recipientAddress: publicKey.toString(),
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to get transaction from backend");
-      }
-
-      const { transactionForSign, mint } = await response.json();
-      console.log(transactionForSign);
-      if (!transactionForSign) {
-        setStatus("No transaction returned from backend");
-        setLoading(false);
+    if (!tokenData.bundleLaunch) {
+      if (!umi) {
+        setStatus("Wallet not connected or UMI not initialized");
         return;
       }
 
-      // Deserialize the transaction using UMI
-      const txBytes = base64.serialize(transactionForSign);
-      const recoveredTx = umi.transactions.deserialize(txBytes);
+      try {
+        setLoading(true);
+        setStatus("Requesting transaction from backend...");
 
-      setStatus("Signing transaction with wallet...");
-      // Sign transaction using umi.identity which uses wallet adapter signer
-      const signedTx = await umi.identity.signTransaction(recoveredTx);
+        const response = await fetch(
+          "http://localhost:5000/createTokenWithMetadata",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: tokenData.name,
+              symbol: tokenData.symbol,
+              uri: "https://example.com/metadata.json",
+              amount: tokenData.supply * 10 ** tokenData.decimals,
+              decimals: tokenData.decimals,
+              revokeMintAuthority: tokenData.revokeMint,
+              revokeFreezeAuthority: tokenData.revokeFreeze,
+              recipientAddress: publicKey.toString(),
+            }),
+          }
+        );
 
-      setStatus("Sending transaction...");
-      const signature = await umi.rpc.sendTransaction(signedTx);
+        if (!response.ok) {
+          throw new Error("Failed to get transaction from backend");
+        }
 
-      setTxSignature(signature);
-      setStatus(`Transaction sent! Signature: ${signature}, mint: ${mint}`);
+        const { transactionForSign, mint } = await response.json();
+        console.log(transactionForSign);
+        if (!transactionForSign) {
+          setStatus("No transaction returned from backend");
+          setLoading(false);
+          return;
+        }
 
-      if (onSolanaSuccess) {
-        onSolanaSuccess();
+        // Deserialize the transaction using UMI
+        const txBytes = base64.serialize(transactionForSign);
+        const recoveredTx = umi.transactions.deserialize(txBytes);
+
+        setStatus("Signing transaction with wallet...");
+        // Sign transaction using umi.identity which uses wallet adapter signer
+        const signedTx = await umi.identity.signTransaction(recoveredTx);
+
+        setStatus("Sending transaction...");
+        const signature = await umi.rpc.sendTransaction(signedTx);
+
+        setTxSignature(signature);
+        setStatus(`Transaction sent! Signature: ${signature}, mint: ${mint}`);
+
+        if (onSolanaSuccess) {
+          onSolanaSuccess();
+        }
+      } catch (error) {
+        console.error("Transaction error:", error);
+        setStatus(`Transaction failed: ${error.message}`);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Transaction error:", error);
-      setStatus(`Transaction failed: ${error.message}`);
-    } finally {
-      setLoading(false);
+    } else {
+      // Proceed to next step in stepper
+      onNext();
     }
   };
 
